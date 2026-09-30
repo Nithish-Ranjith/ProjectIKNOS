@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: iknos-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+
+  webapp:
+    build:
+      context: ./webapp
+    container_name: iknos-webapp
+    ports:
+      - "3000:80"
+    # Vite builds embed env variables at build time.
+    # To pass them into the container build, we define args mapping to our .env file
+    build:
+      context: ./webapp
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
+        - VITE_MAPBOX_TOKEN=${VITE_MAPBOX_TOKEN}
+    env_file:
+      - ./webapp/.env
+    depends_on:
+      - backend
+    restart: unless-stopped
