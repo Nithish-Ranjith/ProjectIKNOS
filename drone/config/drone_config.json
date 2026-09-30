@@ -1,0 +1,16 @@
+{
+  "camera_trigger": {
+    "mode": "DUAL",
+    "distance_interval_m": 10.0,
+    "debounce_seconds": 1.0,
+    "hardware_input": "CAMERA_FEEDBACK"
+  },
+  "blur_threshold": 100.0,
+  "telemetry": {
+    "connection_string": "/dev/ttyAMA0",
+    "baud": 57600
+  },
+  "storage": {
+    "capture_dir": "/tmp/terratrace_captures"
+  }
+}

@@ -1,0 +1,9 @@
+focal_length_mm: 12.29
+sensor_width_mm: 17.3
+sensor_height_mm: 13.0
+image_width_px: 5280
+image_height_px: 3956
+forward_overlap: 0.80
+side_overlap: 0.70
+speed_ms: 5.0
+turn_time_s: 6.0

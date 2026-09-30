@@ -1,0 +1,231 @@
+@import 'mapbox-gl/dist/mapbox-gl.css';
+
+/* ═══════════════════════════════════════════════════════════
+   IKNOS SURVEYOR DRONE — 100% ACCURACY DARK THEME
+═══════════════════════════════════════════════════════════ */
+:root {
+  /* ── Core Palette ──────────────────────────────────────── */
+  --color-bg:              #0D1117; /* Deepest background */
+  --color-surface:         #161B22; /* Card / Panel background */
+  --color-border:          #30363D; /* Subtle borders */
+  --color-text-primary:    #E6EDF3; /* White/off-white text */
+  --color-text-secondary:  #8B949E; /* Muted grey text */
+  
+  --color-brand:           #2EA043; /* IKNOS Green / Approved */
+  --color-brand-light:     rgba(46, 160, 67, 0.15);
+  --color-active:          #2F81F7; /* Operational Blue / In Progress */
+  --color-active-light:    rgba(47, 129, 247, 0.15);
+  --color-warning:         #D29922; /* Amber */
+  --color-danger:          #F85149; /* Error red */
+
+  /* Legacy mappings */
+  --color-navy:            var(--color-bg);
+  --color-terracotta:      var(--color-warning);
+  --color-sage:            var(--color-brand);
+  --color-bg-raised:       var(--color-surface);
+  --color-border-mid:      var(--color-border);
+
+  /* ── Map Symbol Semantics ──────────────────────────────── */
+  --map-cadastral:         rgba(139, 148, 158, 0.7); /* Grey dashed */
+  --map-candidate:         #2F81F7;                  /* Blue/teal candidate */
+  --map-approved:          #2EA043;                  /* Bright green solid */
+  --map-planned-path:      rgba(47, 129, 247, 0.6);  /* Blue path */
+  --map-actual-path:       #D29922;                  /* Amber dashed actual */
+  --map-point-planned:     #2F81F7;                  /* Blue dot */
+  --map-point-next:        #D29922;                  /* Amber dot */
+  --map-point:             #F59E0B;                  /* Orange dot */
+  --map-path:              #FCD34D;                  /* Yellow path */
+  
+  --shadow-subtle:         0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-elevated:       0 10px 25px rgba(0, 0, 0, 0.8);
+  
+  /* ── Spacing (8-point system) ──────────────────────────── */
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  12px;
+  --spacing-lg:  16px;
+  --spacing-xl:  24px;
+  --spacing-xxl: 32px;
+
+  /* ── Shapes ────────────────────────────────────────────── */
+  --radius-sm:   6px;   /* Controls, buttons */
+  --radius-md:   12px;  /* Cards, panels */
+  --radius-lg:   16px;  
+  --radius-pill: 999px; /* Badges */
+
+  /* ── Shadows ───────────────────────────────────────────── */
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-elevated: 0 10px 25px rgba(0, 0, 0, 0.1);
+
+  /* ── Typography ────────────────────────────────────────── */
+  --font-ui: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BASE RESET
+═══════════════════════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   APP SHELL LAYOUT
+═══════════════════════════════════════════════════════════ */
+.app-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.app-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md);
+  z-index: 100;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.app-header {
+  height: 56px;
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-xl);
+  z-index: 90;
+}
+
+.app-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  background: var(--color-bg);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COMPONENTS
+═══════════════════════════════════════════════════════════ */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-subtle);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: #ffffff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #177132;
+  border-color: #177132;
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #ffffff;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #b3271e;
+  border-color: #b3271e;
+}
+
+.btn-outline {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+.btn-outline:hover:not(:disabled) {
+  background: var(--color-bg);
+  border-color: #D1D5DB;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.badge--success {
+  color: var(--color-brand);
+  background: var(--color-brand-light);
+}
+.badge--warning {
+  color: var(--color-warning);
+  background: #FEF3C7;
+}
+
+/* ── Utilities ── */
+.text-brand { color: var(--color-brand); }
+.text-active { color: var(--color-active); }
+.text-muted { color: var(--color-text-secondary); }
+.font-mono { font-family: var(--font-mono); }
+.font-semibold { font-weight: 600; }

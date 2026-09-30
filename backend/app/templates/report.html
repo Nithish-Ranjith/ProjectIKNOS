@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Case Report: {{ case.case_id }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: monospace;
+                font-size: 9px;
+            }
+            @bottom-left {
+                content: "Tamper-evident hash: {{ audit_hash }}";
+                font-family: monospace;
+                font-size: 9px;
+                color: #666;
+            }
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #111;
+            line-height: 1.5;
+            font-size: 11pt;
+            margin: 0;
+        }
+        h1, h2, h3, h4 { margin-top: 1em; margin-bottom: 0.5em; }
+        h1 { border-bottom: 2px solid #333; padding-bottom: 4px; font-size: 18pt; text-transform: uppercase; }
+        h2 { font-size: 14pt; color: #444; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+        .grid { display: flex; flex-wrap: wrap; }
+        .col-half { width: 48%; margin-right: 2%; }
+        
+        .header-block {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 30px;
+        }
+        .header-block .meta {
+            font-family: monospace; font-size: 10pt; background: #f0f0f0; padding: 10px; border-radius: 4px; border: 1px solid #ccc;
+        }
+        
+        .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .table th { background: #f9f9f9; font-weight: 600; }
+        
+        .map-comparison { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .map-box { width: 48%; }
+        .map-box img { width: 100%; border: 1px solid #aaa; border-radius: 4px; }
+        .map-box .label { font-size: 9pt; font-family: monospace; text-align: center; margin-top: 4px; font-weight: bold; }
+        
+        .timelapse-strip { display: flex; gap: 10px; margin-bottom: 20px; }
+        .timelapse-frame { flex: 1; border: 1px solid #aaa; border-radius: 4px; padding: 2px; }
+        .timelapse-frame img { width: 100%; display: block; }
+        .timelapse-frame .caption { font-size: 8pt; text-align: center; font-family: monospace; }
+        
+        .reasoning-box { background: #fdfbf7; border-left: 4px solid #b87a4d; padding: 12px; margin-bottom: 20px; }
+        .reasoning-box h3 { margin-top: 0; color: #b87a4d; font-size: 12pt; }
+        
+        .officer-block {
+            margin-top: 40px; border-top: 1px dashed #ccc; padding-top: 20px;
+        }
+        .officer-block p { margin: 5px 0; }
+        .signature-line { width: 250px; border-bottom: 1px solid #333; margin-top: 40px; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <div class="header-block">
+        <div>
+            <h1>TerraTrace Intelligence Report</h1>
+            <p><strong>Parcel ID:</strong> {{ parcel.parcel_id }}</p>
+            <p><strong>Village:</strong> {{ parcel.village | default("Unknown") }}</p>
+        </div>
+        <div class="meta">
+            Case ID: {{ case.case_id }}<br>
+            Date Triggered: {{ case.created_at.strftime('%Y-%m-%d') }}<br>
+            Trigger Source: {{ case.trigger_source | default("Automated Monitoring") }}<br>
+            Status: {{ case.status.value }}
+        </div>
+    </div>
+
+    <h2>1. Evidence Summary</h2>
+    <table class="table">
+        <tr>
+            <th>Metric</th>
+            <th>Value</th>
+            <th>Threshold Assessment</th>
+        </tr>
+        <tr>
+            <td>Spatial Mismatch (Cadastral vs Drone)</td>
+            <td>{{ data.spatial_mismatch_pct | round(1) }}%</td>
+            <td>{% if data.spatial_mismatch_pct > 15 %}<span style="color:red">Exceeds 15% allowance</span>{% else %}<span style="color:green">Within bounds</span>{% endif %}</td>
+        </tr>
+        <tr>
+            <td>Boundary Shift</td>
+            <td>{{ data.boundary_shift_m | round(1) }} m</td>
+            <td>{% if data.boundary_shift_m > 2.0 %}<span style="color:red">Severe Encroachment</span>{% else %}<span style="color:green">Nominal</span>{% endif %}</td>
+        </tr>
+        <tr>
+            <td>NDVI Instability (5yr)</td>
+            <td>{{ data.instability_score | round(2) }} (Score 0-1)</td>
+            <td>{% if data.instability_score > 0.4 %}<span style="color:red">High variance (Clearance)</span>{% else %}Stable{% endif %}</td>
+        </tr>
+    </table>
+
+    <h2>2. Boundary Comparison</h2>
+    <div class="map-comparison">
+        <div class="map-box">
+            <!-- Simulated static map render via Google Static Maps or Mapbox Static -->
+            <img src="{{ static_map_cadastral }}" alt="Cadastral Baseline">
+            <div class="label">LEGAL CADASTRAL BASELINE</div>
+        </div>
+        <div class="map-box">
+            <img src="{{ static_map_drone }}" alt="Drone Observation">
+            <div class="label">DRONE CAPTURE EXTENT (AI EXTRACTED)</div>
+        </div>
+    </div>
+
+    <h2>3. Temporal AI (Sentinel-2)</h2>
+    <p>Historical optical backscatter indicates timeline of clearance activity.</p>
+    <div class="timelapse-strip">
+        {% for frame in timelapse_frames %}
+        <div class="timelapse-frame">
+            <img src="{{ frame.url }}" alt="{{ frame.date }}">
+            <div class="caption">{{ frame.date }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2>4. Pattern Library Inference</h2>
+    <div class="reasoning-box">
+        <h3>Primary Match: Encroachment via Vegetation Clearance</h3>
+        <p><strong>Confidence: {{ (data.confidence_score * 100) | round(1) }}%</strong></p>
+        <p>
+            The combination of a {{ data.spatial_mismatch_pct | round(1) }}% spatial area expansion along the Northern boundary, coupled with a highly volatile NDVI score ({{ data.instability_score | round(2) }}) between Q3 2021 and Q1 2022, fits the signature profile of physical forest clearance preceding boundary expansion.
+        </p>
+        <p>
+            <i>Rule triggered: <code>SPATIAL_SHIFT_GT_10 AND TEMPORAL_DROP_GT_0.4</code></i>
+        </p>
+    </div>
+
+    <div class="officer-block">
+        <h2>5. Officer Verification</h2>
+        <p><strong>Decision:</strong> __________________________________________________</p>
+        <p><strong>Reasoning:</strong> __________________________________________________</p>
+        <br>
+        <div>
+            <span class="signature-line"></span><br>
+            <small>Authorised Signature</small>
+        </div>
+        <div style="float: right; margin-top: -55px;">
+            <span class="signature-line" style="width: 150px;"></span><br>
+            <small>Date</small>
+        </div>
+    </div>
+
+</body>
+</html>

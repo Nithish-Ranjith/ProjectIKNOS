@@ -1,0 +1,16 @@
+profile_id: picam_v2_sim_01
+simulated: true
+basis: "Raspberry Pi Camera Module v2 (IMX219) published specs"
+sensor_width_mm: 3.68
+sensor_height_mm: 2.76
+focal_length_mm: 3.04
+image_width_px: 3280
+image_height_px: 2464
+mount: nadir
+across_track_axis: long
+planning:
+  target_gsd_m: 0.02
+  forward_overlap: 0.80
+  side_overlap: 0.70
+  speed_ms: 5.0
+  max_altitude_agl_m: 120

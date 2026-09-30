@@ -1,0 +1,42 @@
+# TerraTrace MVP Backend Requirements
+
+# Core
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+pydantic==2.7.1
+
+# Database
+sqlalchemy==2.0.29
+psycopg2-binary==2.9.9
+geoalchemy2==0.15.1
+alembic==1.13.1
+python-dotenv==1.0.1
+
+# Auth
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# ML — optional (temporal + boundary analysis)
+# Comment out if running on RPi4 or minimal server
+statsmodels==0.14.2
+ruptures==1.1.9
+torch==2.3.0
+torchvision==0.18.0
+Pillow==10.3.0
+numpy==1.26.4
+opencv-python-headless==4.9.0.80
+
+# Google Earth Engine (BQ-03 — requires GEE_PROJECT env var + credentials)
+# Uncomment when GEE project is provisioned:
+# earthengine-api==0.1.398
+
+# ODM integration (communicates with external WebODM instance)
+requests==2.32.0
+
+# Geospatial
+shapely==2.0.4
+
+# Dev / testing
+pytest==8.2.0
+pytest-asyncio==0.23.6
+httpx==0.27.0

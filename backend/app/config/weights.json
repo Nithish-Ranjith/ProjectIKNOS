@@ -1,0 +1,29 @@
+{
+  "_comment": "Weights MUST sum to 1.0. Validated at startup in confidence.py — app refuses to start if sum drifts.",
+  "weights": {
+    "spatial_discrepancy": 0.35,
+    "registration_conflict": 0.20,
+    "mutation_pending": 0.15,
+    "temporal_signal": 0.20,
+    "source_quality_penalty": 0.10
+  },
+  "thresholds": {
+    "area_diff_pct_significant": 5.0,
+    "boundary_shift_m_significant": 2.0,
+    "confidence_score_route_to_verification": 50
+  },
+  "authority_tiers": {
+    "CUSTOMER": 0,
+    "SURVEYOR_DRONE": 1,
+    "SURVEYOR_FIELD": 1,
+    "SENIOR_FIELD": 2
+  },
+  "update_class_min_tier": {
+    "OTHER_AUTHORIZED": 1,
+    "MUTATION": 1,
+    "OWNERSHIP": 2,
+    "CADASTRAL_GEOMETRY": 2
+  },
+  "lock_ttl_hours": 72,
+  "blur_threshold": 100.0
+}

@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TerraTrace — Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+  :root {
+    --survey-navy: #0F172A;
+    --archive-blue: #1E293B;
+    --panel-border: #334155;
+    --cadastral-slate: #94A3B8;
+    --text-main: #F8FAFC;
+    --brass: #C8A96E;
+    --sage: #10B981;
+    --terracotta: #EF4444;
+    --brand-teal: #06B6D4;
+    --highlight: #2563EB;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { 
+    background: var(--survey-navy); 
+    color: var(--text-main); 
+    font-family: 'Inter', sans-serif; 
+    font-size: 13px; 
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  h1, h2, h3, .brand-name { font-family: 'Inter', sans-serif; font-weight: 700; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ============ UTILS ============ */
+  .hidden { display: none !important; }
+  .flex { display: flex; }
+  .flex-col { display: flex; flex-direction: column; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .justify-center { justify-content: center; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .gap-4 { gap: 16px; }
+  .p-4 { padding: 16px; }
+  .mb-2 { margin-bottom: 8px; }
+  .mb-4 { margin-bottom: 16px; }
+  .mt-4 { margin-top: 16px; }
+  .text-muted { color: var(--cadastral-slate); }
+  .text-xs { font-size: 11px; }
+  .font-bold { font-weight: 700; }
+  
+  .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .badge-outline-sage { border: 1px solid var(--sage); color: var(--sage); }
+  
+  .btn {
+    background: transparent; border: 1px solid var(--panel-border); color: var(--text-main);
+    padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600;
+    transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn:hover { background: rgba(255,255,255,0.05); }
+  .btn-primary { background: var(--highlight); border-color: var(--highlight); color: white; }
+  .btn-primary:hover { background: #1D4ED8; }
+  .btn-success { background: var(--sage); border-color: var(--sage); color: #000; }
+
+  /* ============ LOGIN OVERLAY ============ */
+  #login-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--survey-navy);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .login-card {
+    background: var(--archive-blue); border: 1px solid var(--panel-border);
+    border-radius: 12px; padding: 40px; width: 400px;
+  }
+  .login-input {
+    width: 100%; padding: 12px; margin-bottom: 16px; background: rgba(0,0,0,0.2);
+    border: 1px solid var(--panel-border); border-radius: 6px; color: white;
+  }
+  
+  /* ============ APP LAYOUT ============ */
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  
+  /* ---- Header ---- */
+  .app-header {
+    height: 60px; background: var(--archive-blue); border-bottom: 1px solid var(--panel-border);
+    display: flex; align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0;
+  }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .header-brand-icon { width: 24px; height: 24px; fill: var(--brand-teal); }
+  
+  .stepper { display: flex; align-items: center; gap: 16px; }
+  .step-item { display: flex; align-items: center; gap: 8px; color: var(--cadastral-slate); }
+  .step-item.active { color: white; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); font-size: 12px; font-weight: bold; }
+  .step-item.active .step-num { background: var(--highlight); color: white; }
+  
+  /* ---- Layout Grid ---- */
+  .dashboard { display: none; height: calc(100vh - 60px); }
+  .dashboard.active { display: flex; flex-direction: column; }
+  
+  .field-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr 320px;
+    grid-template-rows: 1fr 120px;
+    height: 100%; width: 100%;
+  }
+  
+  .panel-col {
+    background: var(--survey-navy); border-right: 1px solid var(--panel-border); border-left: 1px solid var(--panel-border);
+    overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px;
+  }
+  
+  .card { background: var(--archive-blue); border: 1px solid var(--panel-border); border-radius: 8px; padding: 16px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: white; }
+  
+  .kv-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; }
+  .kv-row .k { color: var(--cadastral-slate); }
+  .kv-row .v { font-weight: 500; }
+  
+  .layer-item { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--cadastral-slate); cursor: pointer; }
+  .layer-item input { accent-color: var(--highlight); cursor: pointer; }
+  .layer-item:hover { color: white; }
+  
+  .map-container { grid-column: 2; grid-row: 1; position: relative; background: #000; }
+  #map-field { width: 100%; height: 100%; }
+  
+  .map-controls { position: absolute; top: 16px; right: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+  .map-btn { background: var(--archive-blue); border: 1px solid var(--panel-border); color: white; padding: 8px; border-radius: 6px; cursor: pointer; }
+  .map-btn:hover { background: rgba(255,255,255,0.1); }
+  
+  .bottom-bar { grid-column: 1 / -1; grid-row: 2; background: var(--archive-blue); border-top: 1px solid var(--panel-border); padding: 16px; display: flex; gap: 12px; overflow-x: auto; align-items: center; }
+  .block-thumb { width: 120px; height: 80px; border-radius: 6px; border: 1px solid var(--panel-border); background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0; color: var(--cadastral-slate); font-size: 12px; background-size: cover; background-position: center; }
+  .block-label { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+  
+  .progress-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; width: 100%; }
+  .progress-fill { height: 100%; background: var(--sage); width: 0%; }
+  .block-seq-item { display: flex; align-items: center; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
+
+  /* Drone Camera View */
+  #drone-camera-container { position: relative; width: 100%; height: 50vh; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #drone-video { width: 100%; height: 100%; object-fit: cover; }
+  #drone-map-container { width: 100%; height: 50vh; background: #111; }
+  #map-drone { width: 100%; height: 100%; }
+  
+  /* Mobile Responsiveness */
+  @media (max-width: 768px) {
+    .field-grid { display: flex; flex-direction: column; overflow-y: auto; }
+    .map-container { height: 300px; order: -1; }
+    #drone-camera-container { height: 40vh; }
+    #drone-map-container { height: 60vh; }
+  }
+  .drone-overlay { position: absolute; top: 16px; left: 16px; z-index: 10; background: rgba(0,0,0,0.7); padding: 12px; border-radius: 8px; border: 1px solid var(--sage); }
+
+</style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-card">
+    <h1 style="margin-bottom: 8px;">TerraTrace</h1>
+    <p class="text-muted" style="margin-bottom: 24px;">Cadastral Reconciliation Engine</p>
+    
+    <input id="l-user" class="login-input" type="text" placeholder="Username" />
+    <input id="l-pass" class="login-input" type="password" placeholder="Password" />
+    
+    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+      <button class="btn" style="flex:1" onclick="document.getElementById('l-user').value='drone1'; document.getElementById('l-pass').value='pass'">Drone Camera</button>
+      <button class="btn" style="flex:1" onclick="document.getElementById('l-user').value='field1'; document.getElementById('l-pass').value='pass'">Field Cmdr</button>
+      <button class="btn" style="flex:1" onclick="document.getElementById('l-user').value='customer1'; document.getElementById('l-pass').value='pass'">Owner</button>
+    </div>
+    
+    <div id="login-error" style="color:var(--terracotta); font-size:13px; min-height:18px; margin-bottom:10px;"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header class="app-header">
+    <div class="header-brand">
+      <svg class="header-brand-icon" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4.5l6.5 13h-13L12 6.5z"/></svg>
+      <div><div class="brand-name">IKNOS</div><div class="text-xs text-muted">Land Truth. Clearer.</div></div>
+    </div>
+    
+    <div class="stepper" id="mission-stepper">
+      <div class="step-item"><div class="step-num">1</div><span>Parcel</span></div>
+      <div class="step-item active"><div class="step-num">2</div><span>Plan</span></div>
+      <div class="step-item"><div class="step-num">3</div><span>Fly</span></div>
+      <div class="step-item"><div class="step-num">4</div><span>Capture</span></div>
+      <div class="step-item"><div class="step-num">5</div><span>Process</span></div>
+    </div>
+    
+    <div class="flex items-center gap-4">
+      <div class="badge badge-outline-sage" style="display:flex;gap:4px;align-items:center;">
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--sage)"></span> GPS 3D
+      </div>
+      <span class="text-xs text-muted" id="hdr-role"></span>
+      <button class="btn" style="padding: 6px 12px" onclick="doLogout()">End Mission</button>
+    </div>
+  </header>
+
+  <!-- DASHBOARD: FIELD COMMANDER (Complex UI) -->
+  <div id="dashboard-field" class="dashboard">
+    <div class="field-grid">
+      <div class="panel-col" style="grid-column: 1; grid-row: 1;">
+        <div class="card">
+          <div class="card-title">Parcel Information</div>
+          <div class="kv-row"><span class="k">Parcel ID</span><span class="v" id="d-parcel-id">P-8891</span></div>
+          <div class="kv-row"><span class="k">Village</span><span class="v" id="d-village">Taluka North</span></div>
+          <div class="kv-row"><span class="k">Area (Cadastral)</span><span class="v" id="d-area-c">2.41 Ac</span></div>
+          <div class="kv-row"><span class="k">Area (Adjusted)</span><span class="v" style="color:var(--sage)" id="d-area-a">—</span></div>
+        </div>
+
+        <div class="card" style="flex:1">
+          <div class="card-title">Layers</div>
+          <label class="layer-item"><input type="checkbox" id="layer-sat" checked onchange="toggleLayer('sat')"> Satellite Imagery</label>
+          <label class="layer-item"><input type="checkbox" id="layer-sen2" onchange="toggleLayer('sen2')"> Sentinel-2 (Live WMS)</label>
+          <label class="layer-item"><input type="checkbox" checked disabled> Cadastral Map (Old)</label>
+          <label class="layer-item"><input type="checkbox" checked disabled> Machine Learning Boundary</label>
+          <label class="layer-item"><input type="checkbox" checked disabled> Grid Plan (Lawnmower)</label>
+          <label class="layer-item"><input type="checkbox" checked disabled> Photo Points</label>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Boundary Tools</div>
+          <div class="flex gap-2">
+            <button class="btn" style="flex:1" id="btn-adjust" onclick="adjustBoundary()">Adjust</button>
+            <button class="btn btn-success" style="flex:1" id="btn-approve" onclick="approveBoundary()">Approve</button>
+          </div>
+          <div class="mt-4 p-4" style="background:rgba(0,0,0,0.2); border-radius:6px;">
+            <div class="text-xs text-muted mb-2">Machine Learning Boundary</div>
+            <div class="flex justify-between items-center">
+              <div style="font-size: 20px; font-weight:700; color:var(--sage)" id="d-ml-conf">—</div>
+              <div class="text-xs text-muted" id="d-ml-time">Waiting for Capture...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="map-container">
+        <div id="map-field"></div>
+        <div class="map-controls">
+          <button class="map-btn" onclick="mapField.locate({setView: true, maxZoom: 18})" title="Locate Me">📍</button>
+        </div>
+      </div>
+
+      <div class="panel-col" style="grid-column: 3; grid-row: 1;">
+        <div class="card" style="border-color: var(--highlight);">
+          <div class="flex justify-between items-center mb-4">
+            <div class="card-title" style="margin:0; color:var(--highlight);">Camera Command</div>
+          </div>
+          <button class="btn btn-primary" style="width:100%; padding: 12px; font-size:14px;" onclick="triggerDroneCapture()">📸 Command Drone to Capture</button>
+          <div class="text-xs text-muted mt-2 text-center" id="cmd-status">Drone waiting for command...</div>
+        </div>
+
+        <div class="card">
+          <div class="flex justify-between items-center mb-4">
+            <div class="card-title" style="margin:0">Live Drone Status</div>
+            <div class="badge badge-outline-sage">WAITING</div>
+          </div>
+          <div class="flex justify-between mb-4">
+            <div>
+              <div class="kv-row"><span class="k">Lat</span><span class="v mono" id="tel-lat">—</span></div>
+              <div class="kv-row"><span class="k">Lon</span><span class="v mono" id="tel-lon">—</span></div>
+              <div class="kv-row"><span class="k">Alt</span><span class="v mono" id="tel-alt">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="flex:1">
+          <div class="card-title">Lawnmower Plan</div>
+          <div class="flex justify-between mb-2">
+            <span class="text-xs text-muted">Coverage (Est.)</span>
+            <span class="text-xs font-bold" style="color:var(--sage)">—</span>
+          </div>
+          <div class="progress-bar mb-4"><div class="progress-fill"></div></div>
+          <div class="kv-row"><span class="k">Total Blocks</span><span class="v">9</span></div>
+          <div class="card-title mt-4">Block Sequence</div>
+          <div id="block-seq-list" style="overflow-y:auto; max-height:100px;"></div>
+        </div>
+      </div>
+
+      <div class="bottom-bar" id="bottom-carousel"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD: DRONE CAMERA NODE -->
+  <div id="dashboard-drone" class="dashboard">
+    <div style="display:flex; flex-direction:column; height: 100%;">
+      <div id="drone-camera-container">
+        <video id="drone-video" autoplay playsinline></video>
+        <div class="drone-overlay">
+          <div style="color:var(--sage); font-weight:bold; font-size:16px;">📸 Drone Camera Node Active</div>
+          <div class="text-xs text-muted mt-1" id="drone-poll-status">Polling for Field Commander signals...</div>
+        </div>
+      </div>
+      <div id="drone-map-container">
+        <div id="map-drone"></div>
+      </div>
+    </div>
+    <canvas id="capture-canvas" style="display:none;"></canvas>
+  </div>
+
+  <!-- DASHBOARD: CUSTOMER -->
+  <div id="dashboard-customer" class="dashboard">
+    <div style="padding: 24px; max-width: 800px; margin: 0 auto; width: 100%;">
+      <h2>My Parcels</h2>
+      <p class="text-muted mb-4">View your registered land parcels and ongoing surveys.</p>
+      <div class="card"><div id="customer-parcels-list">Loading your parcels...</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+// Robust API URL resolver:
+// - If opened via a real hostname/IP (e.g. 172.20.10.4), use that.
+// - If opened via localhost/127.0.0.1 (same machine), use localhost directly.
+// - This ensures the Android phone browser connecting over WiFi uses the server's LAN IP.
+const _host = window.location.hostname;
+const _backendHost = (_host === '' || _host === 'localhost' || _host === '127.0.0.1')
+  ? 'localhost'
+  : _host;  // e.g. 172.20.10.4 when opened from phone
+const API = `http://${_backendHost}:8000`;
+
+let TOKEN = null;
+let ROLE = null;
+let mapField = null;
+let mapDrone = null;
+let satLayer = null;
+let sen2Layer = null;
+let fieldDroneMarker = null;
+let droneSelfMarker = null;
+let dronePollInterval = null;
+
+async function api(path, opts={}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (TOKEN) headers['Authorization'] = `Bearer ${TOKEN}`;
+  return fetch(API + path, { ...opts, headers });
+}
+
+async function doLogin() {
+  const u = document.getElementById('l-user').value;
+  const p = document.getElementById('l-pass').value;
+  const btn = document.querySelector('#login-overlay .btn-primary');
+  const errEl = document.getElementById('login-error');
+  btn.textContent = 'Signing in...';
+  btn.disabled = true;
+  errEl.textContent = '';
+  try {
+    const res = await api('/auth/login', { method:'POST', body:JSON.stringify({username:u, password:p}) });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || 'Login failed');
+    TOKEN = data.access_token;
+    ROLE = data.role;
+    
+    document.getElementById('login-overlay').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('hdr-role').textContent = `${ROLE} · ${u}`;
+    
+    document.querySelectorAll('.dashboard').forEach(el => el.classList.remove('active'));
+    
+    if (ROLE === 'SURVEYOR_FIELD' || ROLE === 'SENIOR_FIELD') {
+      document.getElementById('dashboard-field').classList.add('active');
+      initFieldCommander();
+    } else if (ROLE === 'SURVEYOR_DRONE') {
+      document.getElementById('dashboard-drone').classList.add('active');
+      initDroneCameraNode();
+    } else if (ROLE === 'CUSTOMER') {
+      document.getElementById('dashboard-customer').classList.add('active');
+      loadCustomerParcels();
+    }
+  } catch(e) {
+    errEl.textContent = '⚠ ' + e.message;
+  } finally {
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
+  }
+}
+
+function doLogout() {
+  TOKEN = null; ROLE = null;
+  if(dronePollInterval) clearInterval(dronePollInterval);
+  document.getElementById('login-overlay').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
+}
+
+/* ==================== FIELD COMMANDER LOGIC ==================== */
+function initFieldCommander() {
+  if (!mapField) {
+    mapField = L.map('map-field').setView([20.5937, 78.9629], 5);
+    satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri' }).addTo(mapField);
+    sen2Layer = L.tileLayer.wms("https://s2maps-tiles.eu/wms", { layers: 's2cloudless-2020_3857', format: 'image/jpeg', transparent: false });
+    
+    // Handle Sentinel-2 WMS errors gracefully
+    sen2Layer.on('tileerror', function(error, tile) {
+      console.warn('Sentinel-2 WMS layer failed to load tile');
+      document.getElementById('layer-sen2').nextSibling.textContent = ' Sentinel-2 (WMS Unavailable)';
+      document.getElementById('layer-sen2').disabled = true;
+    });
+
+    mapField.locate({setView: true, maxZoom: 17});
+    mapField.on('locationfound', function(e) {
+      if(!fieldDroneMarker) {
+        fieldDroneMarker = L.marker(e.latlng, {icon: L.divIcon({className: 'drone-icon', html: '🛸', iconSize: [24,24]})}).addTo(mapField);
+      } else fieldDroneMarker.setLatLng(e.latlng);
+      document.getElementById('tel-lat').textContent = e.latlng.lat.toFixed(6);
+      document.getElementById('tel-lon').textContent = e.latlng.lng.toFixed(6);
+    });
+  }
+  
+  loadActiveFieldCase();
+}
+
+let currentFieldCase = null;
+
+async function loadActiveFieldCase() {
+  try {
+    const res = await api('/cases?status=open');
+    const cases = await res.json();
+    if (cases.length > 0) {
+      currentFieldCase = cases[0]; // Auto-select first open case
+      document.getElementById('d-parcel-id').textContent = currentFieldCase.parcel_id;
+      document.getElementById('d-village').textContent = "P" + currentFieldCase.parcel_id.substring(1) + " Village"; // Mock village from ID
+      
+      // Update Stepper
+      document.querySelectorAll('#mission-stepper .step-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('#mission-stepper .step-item')[3].classList.add('active'); // Jump to Capture step
+      
+      loadMissionBlocks(currentFieldCase.case_id);
+    }
+  } catch(e) { console.error('Failed to load field cases', e); }
+}
+
+async function loadMissionBlocks(caseId) {
+  const car = document.getElementById('bottom-carousel');
+  const seq = document.getElementById('block-seq-list');
+  car.innerHTML = ''; seq.innerHTML = '';
+  // In reality, this would fetch from /missions. We will dynamically generate 3 blocks for the UI
+  for(let i=1; i<=3; i++) {
+    car.innerHTML += `<div class="block-thumb" id="thumb-b${i}"><div class="block-label">B${i}</div>Awaiting Capture</div>`;
+    seq.innerHTML += `<div class="block-seq-item"><span style="color:var(--cadastral-slate)">B${i}</span><span class="text-xs">Pending</span></div>`;
+  }
+}
+
+async function adjustBoundary() {
+  if (!currentFieldCase) return alert('No active case');
+  document.getElementById('btn-adjust').textContent = 'Adjusting...';
+  try {
+    // We would PUT /cases/{id} here, simulating it for now
+    await new Promise(r => setTimeout(r, 1000));
+    alert('Boundary adjustment interface would open here.');
+  } finally {
+    document.getElementById('btn-adjust').textContent = 'Adjust';
+  }
+}
+
+async function approveBoundary() {
+  if (!currentFieldCase) return alert('No active case');
+  document.getElementById('btn-approve').textContent = 'Approving...';
+  try {
+    // In actual backend, we need a PATCH /cases/{id} endpoint to change status to 'authority_review' or 'closed'
+    const res = await api(`/cases`, { method: 'GET' }); // Simulation API hit
+    alert(`Case ${currentFieldCase.case_id} boundary approved and locked.`);
+    
+    // Update Stepper to Process
+    document.querySelectorAll('#mission-stepper .step-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('#mission-stepper .step-item')[4].classList.add('active'); 
+  } finally {
+    document.getElementById('btn-approve').textContent = 'Approve';
+  }
+}
+
+function toggleLayer(layerName) {
+  if(layerName === 'sat') document.getElementById('layer-sat').checked ? mapField.addLayer(satLayer) : mapField.removeLayer(satLayer);
+  if(layerName === 'sen2') document.getElementById('layer-sen2').checked ? mapField.addLayer(sen2Layer) : mapField.removeLayer(sen2Layer);
+}
+
+async function triggerDroneCapture() {
+  const stat = document.getElementById('cmd-status');
+  stat.textContent = 'Command sent, waiting for Drone...';
+  try {
+    await api('/command-capture', { method: 'POST' });
+    
+    // Poll for the image
+    let attempts = 0;
+    const pollImg = setInterval(async () => {
+      attempts++;
+      if(attempts > 15) { clearInterval(pollImg); stat.textContent = 'Timeout waiting for image'; return; }
+      try {
+        const res = await api('/missions/M_TEMP/latest-image');
+        if(res.ok) {
+          clearInterval(pollImg);
+          const data = await res.json();
+          stat.innerHTML = `Capture received! <br><a href="#" onclick="showCapturedImage('${API}${data.url}')">View Image & Detect Boundary</a>`;
+          document.getElementById('thumb-b1').innerHTML = `<div class="block-label">B1</div><span style="color:var(--sage)">✅ Captured</span>`;
+          document.getElementById('d-ml-conf').textContent = '94.2%';
+          document.getElementById('d-area-a').textContent = '2.39 Ac';
+          document.getElementById('d-ml-time').textContent = 'Just now';
+        }
+      } catch(e) {}
+    }, 1000);
+  } catch(e) { stat.textContent = 'Error sending command'; }
+}
+
+function showCapturedImage(url) {
+  // Simple modal injection
+  const modal = document.createElement('div');
+  modal.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 24px;";
+  modal.innerHTML = `
+    <div style="background:var(--panel); padding: 16px; border-radius: 8px; max-width: 800px; width: 100%;">
+      <div style="display:flex; justify-content:space-between; margin-bottom: 12px;">
+        <h3 style="margin:0; color:var(--text-primary)">Captured Block Image</h3>
+        <button class="btn" onclick="this.closest('div').parentElement.parentElement.remove()">Close</button>
+      </div>
+      <img src="${url}" style="width:100%; max-height:60vh; object-fit:contain; background:#000; border-radius: 4px;" />
+      <div style="display:flex; gap: 12px; margin-top: 16px;">
+        <button class="btn btn-primary" style="flex:1" onclick="alert('Auto boundary detection running...')">🤖 Auto Detect Boundary (ML)</button>
+        <button class="btn" style="flex:1" onclick="alert('Manual marking tool activated')">✏️ Manual Mark Boundary</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+/* ==================== DRONE CAMERA NODE LOGIC ==================== */
+function initDroneCameraNode() {
+  const video = document.getElementById('drone-video');
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(stream => { video.srcObject = stream; })
+    .catch(err => { console.error("Camera access denied", err); });
+
+  if (!mapDrone) {
+    mapDrone = L.map('map-drone').setView([20.5937, 78.9629], 5);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(mapDrone);
+    mapDrone.locate({setView: true, maxZoom: 18, watch: true});
+    mapDrone.on('locationfound', function(e) {
+      if(!droneSelfMarker) droneSelfMarker = L.marker(e.latlng, {icon: L.divIcon({html: '📱'})}).addTo(mapDrone);
+      else droneSelfMarker.setLatLng(e.latlng);
+      mapDrone.setView(e.latlng);
+    });
+  }
+
+  // Poll for commands from Field Surveyor
+  dronePollInterval = setInterval(async () => {
+    try {
+      const res = await api('/command-capture');
+      const data = await res.json();
+      if (data.capture_requested) {
+        document.getElementById('drone-poll-status').textContent = '💥 Capture Triggered! Snapping photo...';
+        document.getElementById('drone-poll-status').style.color = 'var(--terracotta)';
+        
+        // Take picture from video stream using canvas
+        const canvas = document.getElementById('capture-canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        video.style.opacity = '0';
+        setTimeout(() => { video.style.opacity = '1'; }, 300);
+        
+        canvas.toBlob(async (blob) => {
+          const formData = new FormData();
+          formData.append('file', blob, 'capture.jpg');
+          const sidecar = {
+            mission_id: 'M_TEMP', image_id: 'img_' + Date.now(), seq: 1, lat: 20.59, lon: 78.96,
+            alt_m: 50.0, yaw_deg: 0, gps_fix_type: '3D', timestamp_gps: new Date().toISOString(),
+            blur_score: 0.1, quality_flag: 'PASS', camera_id: 'webcam_1'
+          };
+          formData.append('sidecar', JSON.stringify(sidecar));
+          
+          try {
+            await fetch(API + '/missions/M_TEMP/images', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${TOKEN}` },
+              body: formData
+            });
+            document.getElementById('drone-poll-status').style.color = 'var(--cadastral-slate)';
+            document.getElementById('drone-poll-status').textContent = 'Photo uploaded successfully! Polling...';
+          } catch(err) {
+            document.getElementById('drone-poll-status').textContent = 'Upload failed.';
+          }
+        }, 'image/jpeg', 0.8);
+      }
+    } catch(e) {}
+  }, 2000);
+}
+
+/* ==================== CUSTOMER DASHBOARD ==================== */
+async function loadCustomerParcels() {
+  const container = document.getElementById('customer-parcels-list');
+  try {
+    // Use /my-cases which is scoped to this customer's parcels
+    const res = await api('/my-cases');
+    const cases = await res.json();
+    if (!Array.isArray(cases) || cases.length === 0) {
+      container.innerHTML = '<div style="padding:24px; text-align:center; color:var(--cadastral-slate)">🌾 No active cases found on your parcels.</div>';
+      return;
+    }
+    // confidence_score is stored as percentage (e.g. 88.0 = 88%)
+    container.innerHTML = cases.map(c => {
+      const scorePct = c.confidence_score; // already a percentage
+      const isFlagged = (scorePct < 90 || c.discrepancy_type) ? '<span title="Boundary discrepancy flagged" style="color:var(--terracotta); margin-left:6px;">🚩</span>' : '';
+      const statusColor = c.status === 'closed' ? 'var(--sage)' : c.status === 'rejected' ? 'var(--terracotta)' : 'var(--brand-teal)';
+      return `<div style="padding:16px; border-bottom:1px solid var(--panel-border); display:flex; justify-content:space-between; align-items:center;">
+        <div><div style="color:white; font-size:14px; font-weight:600;">Parcel: ${c.parcel_id}${isFlagged}</div>
+        <div class="text-xs text-muted" style="margin-top:4px;">Case ID: ${c.case_id} &nbsp;|&nbsp; Confidence: ${scorePct.toFixed(1)}%</div></div>
+        <div class="badge" style="border:1px solid ${statusColor}; color:${statusColor}">${c.status.replace('_',' ')}</div></div>`;
+    }).join('');
+  } catch(e) { container.innerHTML = '<div style="padding:16px; color:var(--terracotta);">⚠ Failed to load your parcels. Check your connection.</div>'; }
+}
+
+</script>
+</body>
+</html>

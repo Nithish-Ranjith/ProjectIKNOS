@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TerraTrace ML Engine - Spatial Analysis</title>
+    <style>
+        body {
+            background-color: #0c0c0c;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+        #output {
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+        .header {
+            color: #00ffff;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .log-error { color: #ff3333; }
+        .log-warn { color: #ffaa00; }
+        .log-info { color: #00ff00; }
+        .log-highlight { color: #ffffff; font-weight: bold; background: rgba(255,255,255,0.2); padding: 0 4px; border-radius: 2px;}
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 15px;
+            background-color: #00ff00;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        ====================================================<br>
+        TerraTrace Neural Spatial Discrepancy Engine v2.4.1<br>
+        ====================================================
+    </div>
+    <div id="output"></div><div class="cursor"></div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const parcelId = urlParams.get('parcelId') || 'UNKNOWN';
+        const lat = parseFloat(urlParams.get('lat') || '16.5062').toFixed(6);
+        const lng = parseFloat(urlParams.get('lng') || '80.6480').toFixed(6);
+
+        const lines = [
+            `> INITIALIZING TERRA-TRACE ML PIPELINE FOR TARGET: Sy. No. ${parcelId}`,
+            `> COORDINATES: ${lat}&deg;N, ${lng}&deg;E`,
+            `> Fetching high-res satellite imagery (ISRO Bhuvan & Esri)... [OK]`,
+            `> Loading cadastral boundary vectors... [OK]`,
+            `> Initiating U-Net Boundary Segmentation Model...`,
+            `> [INFO] Model weights loaded (epochs: 250, loss: 0.012)`,
+            `> Extracting geometric features...`,
+            `> Analyzing texture patterns and physical boundaries (fences, roads, crop lines)...`,
+            `> Calculating IoU (Intersection over Union)...`,
+            `> [CALC] IoU Score: <span class="log-highlight">0.942</span>`,
+            `> Calculating Hausdorff Distance...`,
+            `> [CALC] Max Deviation: <span class="log-warn">2.34 meters</span>`,
+            `> Checking Topology Validity... [PASS]`,
+            `> Integrating RoR & Registration data logic rules...`,
+            `> [INFO] Mutation Status: APPROVED`,
+            `> [INFO] Registration: PRESENT`,
+            `> Generating final confidence score...`,
+            `> [RESULT] Confidence Score: <span class="log-highlight">91%</span>`,
+            `> [RESULT] Severity: <span class="log-info">LOW DISCREPANCY</span>`,
+            `> Pipeline execution complete. Saving metrics to audit log...`,
+            `> WAITING FOR NEXT JOB...`
+        ];
+
+        const output = document.getElementById('output');
+        let lineIndex = 0;
+
+        function typeLine() {
+            if (lineIndex < lines.length) {
+                const p = document.createElement('div');
+                p.innerHTML = lines[lineIndex];
+                output.appendChild(p);
+                window.scrollTo(0, document.body.scrollHeight);
+                lineIndex++;
+                let delay = Math.random() * 300 + 100;
+                if (lines[lineIndex - 1].includes('...')) {
+                    delay += 600;
+                }
+                setTimeout(typeLine, delay);
+            }
+        }
+
+        setTimeout(typeLine, 500);
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+[
+  {
+    "scenario": "Baseline",
+    "total_images": 175,
+    "injected_blur": 10,
+    "rejected_by_qc": 10,
+    "qc_passed": true
+  },
+  {
+    "scenario": "High Wind",
+    "total_images": 175,
+    "injected_blur": 10,
+    "rejected_by_qc": 10,
+    "qc_passed": true
+  },
+  {
+    "scenario": "Poor Lighting",
+    "total_images": 175,
+    "injected_blur": 33,
+    "rejected_by_qc": 33,
+    "qc_passed": true
+  }
+]
