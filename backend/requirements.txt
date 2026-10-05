@@ -20,8 +20,8 @@ passlib[bcrypt]==1.7.4
 # Comment out if running on RPi4 or minimal server
 statsmodels==0.14.2
 ruptures==1.1.9
-torch==2.3.0
-torchvision==0.18.0
+torch>=2.3.0
+torchvision>=0.18.0
 Pillow==10.3.0
 numpy==1.26.4
 opencv-python-headless==4.9.0.80
