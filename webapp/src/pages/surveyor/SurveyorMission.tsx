@@ -834,8 +834,8 @@ export function SurveyorMission() {
         parcel: {
           parcelId: caseData.parcel_id || id,
           villageName: caseData.village || (caseData as any).case_data?.parcel?.village_code || 'Unknown',
-          cadastralAreaSqM: (caseData as any).case_data?.evidence?.spatial_evidence?.area_declared_sqm || 0,
-          workingAreaSqM: (caseData as any).case_data?.evidence?.spatial_evidence?.area_surveyed_sqm || 0,
+          cadastralAreaSqM: (caseData as any).case_data?.discrepancy?.cadastral_area_m2 || layers?.discrepancy?.cadastral_area_m2 || 0,
+          workingAreaSqM: (caseData as any).case_data?.discrepancy?.candidate_area_m2 || layers?.discrepancy?.candidate_area_m2 || 0,
           boundaryStatus: prev.parcel?.boundaryStatus || 'BOUNDARY_PENDING'
         }
       }));
