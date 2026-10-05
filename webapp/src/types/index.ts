@@ -1,5 +1,5 @@
 // 
-// TerraTrace — Canonical Type Definitions
+// IKNOS — Canonical Type Definitions
 // Every type matches exactly the PRD Section 7 case/parcel/evidence schemas
 // and the Architecture Section 6 backend endpoint contract.
 // When the real FastAPI backend replaces stubs, these types must NOT change.
@@ -96,15 +96,35 @@ export interface Mutation {
 
 //  Geometry Layers (Architecture 4.3 — EvidenceMap) 
 // Returned by GET /cases/:id/geometry-layers
-// U-Net output is slotted here when the ML model is integrated.
+export interface BoundaryPipelineStatus {
+  status: 'QUEUED' | 'RUNNING' | 'SUCCESS' | 'LOW_CONFIDENCE' | 'NO_DETECTION' |
+          'ORTHOMOSAIC_UNAVAILABLE' | 'MODEL_UNAVAILABLE' | 'ERROR' |
+          'INVALID_GEOMETRY' | 'PRECOMPUTED' | string
+  message: string
+  mission_id?: string
+  updated_at?: string
+  confidence?: number | null
+  confidence_semantics?: string
+}
+
 export interface GeometryLayers {
   cadastral: GeoJSONFeature | null
-  ai_boundary: GeoJSONFeature | null       // STUB: null until U-Net endpoint live
-  drone_coverage: GeoJSONFeature | null    // STUB: null until mission images processed
+  ai_boundary: GeoJSONFeature | null       // null until U-Net pipeline completes
+  drone_coverage: GeoJSONFeature | null
   discrepancy: {
+    metrics_id?: string
     area_diff_pct: number
     boundary_shift_m: number
+    iou?: number
+    intersection_m2?: number
+    difference_m2?: number
+    cadastral_area_m2?: number
+    candidate_area_m2?: number
+    topology_valid?: boolean
+    positioning_quality?: string
+    computed_at?: string
   } | null
+  pipeline?: BoundaryPipelineStatus | null
 }
 
 //  Evidence Bundle (Architecture 4.3 — EvidenceTabs) 

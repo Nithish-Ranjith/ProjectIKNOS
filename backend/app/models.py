@@ -1,5 +1,5 @@
 """
-backend/app/models.py — Full SQLAlchemy ORM schema for TerraTrace MVP.
+backend/app/models.py — Full SQLAlchemy ORM schema for IKNOS MVP.
 
 Tables:
   Existing (carried forward, corrected):

@@ -93,7 +93,7 @@ fun LoginScreen(
             )
         }
         Text(
-            "TerraTrace",
+            "IKNOS",
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.ExtraBold,
             color = Color(0xFFF8FAFC),

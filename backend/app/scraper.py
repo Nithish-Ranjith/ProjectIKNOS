@@ -367,7 +367,7 @@ async def get_ap_jurisdiction_from_coords(lat: float, lng: float) -> Dict[str, A
         url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lng}&format=json&addressdetails=1"
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "TerraTrace-AP-Gov/1.0 (contact@terratrace.ap.gov.in)"}
+            headers={"User-Agent": "IKNOS-AP-Gov/1.0 (contact@iknos.ap.gov.in)"}
         )
         with urllib.request.urlopen(req, timeout=3.5, context=ctx) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -612,7 +612,7 @@ def generate_cadastral_fmb_svg(
   <text x="688" y="607" font-family="Arial" font-size="10" fill="#334155">Sub-division Boundary</text>
 
   <text x="35" y="630" font-family="Arial" font-size="9" fill="#64748B">
-    Datum: WGS84 / UTM 44N • Source: Andhra Pradesh Bhu-Naksha Cadastral Database • Generated for TerraTrace Web Intake
+    Datum: WGS84 / UTM 44N • Source: Andhra Pradesh Bhu-Naksha Cadastral Database • Generated for IKNOS Web Intake
   </text>
   <text x="35" y="644" font-family="Arial" font-size="9" fill="#64748B">
     Note: Certified true copy of the Field Measurement Book (FMB) registered with the Tahsildar / Mandal Revenue Officer (MRO).

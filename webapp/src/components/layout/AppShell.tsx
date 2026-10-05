@@ -1,5 +1,8 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Clock, User } from 'lucide-react';
+import { Toaster } from 'sonner';
+import { ThemeToggle } from '../ThemeToggle';
 
 const navItems = [
   { id: 'home', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
@@ -8,9 +11,23 @@ const navItems = [
 ];
 
 export function AppShell() {
+  const navigate = useNavigate();
+  const [toasterTheme, setToasterTheme] = useState<'light' | 'dark'>(
+    (localStorage.getItem('iknos_theme') ?? 'light') as 'light' | 'dark'
+  );
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const t = document.documentElement.getAttribute('data-theme');
+      setToasterTheme((t === 'dark' ? 'dark' : 'light') as 'light' | 'dark');
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="app-layout">
-      
+      <Toaster theme={toasterTheme} position="top-center" />
       {/* GLOBAL SIDE NAV */}
       <nav className="app-sidebar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '32px', paddingLeft: '8px' }}>
@@ -48,23 +65,26 @@ export function AppShell() {
           ))}
         </div>
         
-        <div style={{ marginTop: 'auto', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-           <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600 }}>
-             DEMO
+         <div style={{ marginTop: 'auto', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600 }}>
+               DEMO
+             </div>
+             <ThemeToggle />
            </div>
            <button 
              onClick={() => {
                localStorage.removeItem('demo_session');
-               window.location.href = '/login';
+               navigate('/login');
              }}
              style={{ 
-               background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)',
-               padding: '4px 10px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' 
+               background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-2)',
+               padding: '4px 10px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', width: '100%'
              }}
            >
              Log Out
            </button>
-        </div>
+         </div>
       </nav>
 
       {/* MAIN CONTENT AREA */}

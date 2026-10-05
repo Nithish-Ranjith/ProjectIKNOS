@@ -1,4 +1,4 @@
-# TerraTrace MVP Backend — 2-day hackathon scope
+# IKNOS MVP Backend — 2-day hackathon scope
 
 ## What's here (built, real, runs)
 - `parcels`, `ror`, `mutation`, `registration`, `cases`, `objections` tables (PostGIS)
@@ -35,7 +35,7 @@
 pip install -r requirements.txt
 # Postgres must have PostGIS enabled on the target DB:
 #   CREATE EXTENSION IF NOT EXISTS postgis;
-export DATABASE_URL="postgresql://user:pass@localhost:5432/terratrace"
+export DATABASE_URL="postgresql://user:pass@localhost:5432/iknos"
 python seed.py
 uvicorn app.main:app --reload
 ```

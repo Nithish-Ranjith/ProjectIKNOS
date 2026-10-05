@@ -1,5 +1,5 @@
 """
-backend/app/main.py — TerraTrace MVP API
+backend/app/main.py — IKNOS MVP API
 
 Added full role-gating, auth, and missing endpoints.
 """
@@ -11,20 +11,30 @@ from sqlalchemy import select
 from typing import List, Optional
 from datetime import datetime, timezone
 import os
+import logging
 
-from .database import get_db, engine, Base
+logger = logging.getLogger(__name__)
+
+from pathlib import Path
+from .database import get_db, engine, Base, SessionLocal
 from . import models, schemas, auth
 from .confidence import compute_confidence
 from . import lock_service, audit_service, mission_service, field_verification, record_update_service
+from .spatial import wms_service
+from fastapi.responses import Response
 from .decision_routes import router as decision_router
 
-app = FastAPI(title="TerraTrace MVP API")
+app = FastAPI(title="IKNOS MVP API")
 
-# ---- CORS: allow browser-served HTML (any port on localhost) to reach the API ----
+# ---- CORS: dev allows any origin; production requires an explicit IKNOS_CORS_ORIGINS list ----
+_cors_env = os.environ.get("IKNOS_CORS_ORIGINS", "")
+if auth.IS_PRODUCTION and (not _cors_env or _cors_env.strip() == "*"):
+    raise RuntimeError("Unsafe production configuration: set IKNOS_CORS_ORIGINS to an explicit origin list")
+_cors_origins = [o.strip() for o in _cors_env.split(",") if o.strip()] or ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # In production, lock to your domain
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_origins != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -37,11 +47,12 @@ app.include_router(decision_router)
 
 @app.on_event("startup")
 def on_startup():
+    auth.assert_production_safe()
     Base.metadata.create_all(bind=engine)
 
 # --- Auth ---
 
-@app.post("/auth/login", response_model=schemas.TokenOut)
+@app.post("/auth/login", response_model=schemas.TokenOut, dependencies=[Depends(auth.dev_only)])
 def login(body: schemas.LoginIn, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == body.username).first()
     if not user or not auth.verify_password(body.password, user.hashed_password):
@@ -92,7 +103,7 @@ def _find_user_by_identifier(identifier: str, db: Session):
 
     return user
 
-@app.post("/auth/otp/send")
+@app.post("/auth/otp/send", dependencies=[Depends(auth.dev_only)])
 def send_otp(body: OtpSendBody, db: Session = Depends(get_db)):
     otp = str(random.randint(100000, 999999))
     _otp_store[body.phone.strip()] = (otp, _time.time() + 300)  # 5 min expiry
@@ -101,7 +112,7 @@ def send_otp(body: OtpSendBody, db: Session = Depends(get_db)):
     print(f"\n{'='*40}\nOTP for {body.phone}: {otp}\n{'='*40}\n", flush=True)
     return {"sent": True, "expires_in": 300, "demo_otp": otp}
 
-@app.post("/auth/otp/verify", response_model=schemas.TokenOut)
+@app.post("/auth/otp/verify", response_model=schemas.TokenOut, dependencies=[Depends(auth.dev_only)])
 def verify_otp(body: OtpVerifyBody, db: Session = Depends(get_db)):
     clean_phone = body.phone.strip()
     entry = _otp_store.get(clean_phone)
@@ -195,6 +206,13 @@ def get_parcel_satellite_timeseries(
         
     return timeseries
 
+# --- WMS/WMTS Server Endpoint ---
+@app.get("/api/wmts/{z}/{x}/{y}.png")
+def get_wmts_tile(z: int, x: int, y: int):
+    # Fetch tile bytes from our proxy/generation service
+    tile_bytes = wms_service.get_wmts_tile(z, x, y)
+    return Response(content=tile_bytes, media_type="image/png")
+
 # --- Capture Command Sync (Demo) ---
 capture_command_active = False
 
@@ -211,6 +229,54 @@ def poll_capture():
     if status:
         capture_command_active = False # Reset after reading
     return {"capture_requested": status}
+
+
+@app.get("/admin/surveyors")
+def list_surveyors(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(models.UserRole.ADMIN, models.UserRole.SENIOR_FIELD))
+):
+    surveyors = db.query(models.User).filter(
+        models.User.role.in_([models.UserRole.SURVEYOR_FIELD, models.UserRole.SURVEYOR_DRONE])
+    ).all()
+    
+    return [
+        {
+            "id": s.user_id,
+            "name": s.username,
+            "email": s.email or f"{s.username}@ap.gov.in",
+            "assigned_case_count": db.query(models.Case).filter(models.Case.case_data.op("->>")("assigned_surveyor_id") == s.user_id).count()
+        } for s in surveyors
+    ]
+
+from pydantic import BaseModel
+class AssignCaseIn(BaseModel):
+    surveyor_id: str
+
+@app.post("/cases/{case_id}/assign")
+def assign_case(
+    case_id: str,
+    payload: AssignCaseIn,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(models.UserRole.ADMIN, models.UserRole.SENIOR_FIELD))
+):
+    case = db.query(models.Case).filter(models.Case.case_id == case_id).with_for_update().first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    
+    cd = case.case_data or {}
+    cd["assigned_surveyor_id"] = payload.surveyor_id
+    case.case_data = cd
+    case.status = models.CaseStatus.FIELD_VERIFICATION
+    
+    audit_service.append_event(
+        db, case_id=case_id, event_type="CASE_ASSIGNED",
+        data={"assigned_to": payload.surveyor_id},
+        actor_id=current_user.user_id, actor_role=current_user.role.value
+    )
+    
+    db.commit()
+    return {"status": "SUCCESS", "assigned_to": payload.surveyor_id}
 
 
 @app.get("/admin/dashboard/stats")
@@ -302,7 +368,7 @@ def decide_case(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_role(models.UserRole.SURVEYOR_FIELD, models.UserRole.SENIOR_FIELD))
 ):
-    case = db.get(models.Case, case_id)
+    case = db.query(models.Case).filter(models.Case.case_id == case_id).with_for_update().first()
     if not case:
         raise HTTPException(404, "case not found")
 
@@ -327,7 +393,7 @@ def approve_case(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    case = db.get(models.Case, case_id)
+    case = db.query(models.Case).filter(models.Case.case_id == case_id).with_for_update().first()
     if not case:
         raise HTTPException(404, "case not found")
     
@@ -367,6 +433,18 @@ def submit_objection(
     db.add(obj)
     db.commit()
     return {"objection_id": obj.objection_id, "status": "submitted_pending_review"}
+
+@app.get("/objections/{parcel_id}")
+def get_objections(
+    parcel_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role != "admin":
+        auth.assert_parcel_access(parcel_id, current_user)
+    
+    objections = db.query(models.Objection).filter(models.Objection.parcel_id == parcel_id).all()
+    return objections
 
 # --- Missions ---
 
@@ -446,6 +524,15 @@ async def upload_mission_image(
     meta = schemas.ImageSidecarIn.model_validate_json(sidecar)
     if meta.mission_id != mission_id:
         raise HTTPException(400, "mission_id mismatch")
+        
+    mission = db.get(models.Mission, mission_id)
+    if not mission:
+        raise HTTPException(404, "Mission not found")
+    auth.assert_parcel_access(db.get(models.Case, mission.case_id).parcel_id, current_user)
+        
+    import re
+    if not re.match(r'^[A-Za-z0-9_-]+$', meta.image_id):
+        raise HTTPException(400, "Invalid image_id")
     
     file_path = f"backend/uploads/{meta.image_id}.jpg"
     with open(file_path, "wb") as f:
@@ -474,6 +561,11 @@ def get_latest_image(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    mission = db.get(models.Mission, mission_id)
+    if not mission:
+        raise HTTPException(404, "Mission not found")
+    auth.assert_parcel_access(db.get(models.Case, mission.case_id).parcel_id, current_user)
+    
     mi = db.query(models.MissionImage).filter(models.MissionImage.mission_id == mission_id).order_by(models.MissionImage.seq.desc()).first()
     if not mi:
         raise HTTPException(404, "No images found for this mission")
@@ -486,9 +578,181 @@ def trigger_odm_processing(
     current_user: models.User = Depends(auth.require_role(models.UserRole.SURVEYOR_DRONE))
 ):
     from . import odm_pipeline
-    # In a real setup, image_dir would be dynamically retrieved
-    res = odm_pipeline.submit_to_odm(mission_id, image_dir="data/drone_imagery")
+    import os
+    # The actual image_dir should be specific to the mission, but using a stub path
+    image_dir = f"uploads/mission_{mission_id}"
+    res = odm_pipeline.submit_to_odm(mission_id, image_dir=image_dir)
     return res
+
+import json
+import tempfile
+from . import odm_pipeline
+from . import boundary_repository as boundary_repo
+from .models import BoundaryCandidate  # noqa: F401  (kept for external imports)
+
+ORTHO_CACHE_DIR = Path(os.environ.get("IKNOS_ORTHO_CACHE_DIR", tempfile.gettempdir())) / "iknos_ortho"
+
+
+def _resolve_orthomosaic(mission: models.Mission) -> tuple[Optional[str], str]:
+    """
+    Locate the orthomosaic for a mission. Returns (local_path, message).
+    Source of truth is Mission.orthomosaic_uri, written when ODM completes.
+    No fixture/mock fallback: if there is no real orthomosaic the pipeline reports it.
+    """
+    import requests
+    uri = mission.orthomosaic_uri
+    if not uri:
+        return None, "Mission has no orthomosaic yet (ODM has not completed or was skipped)."
+    if uri.startswith(("http://", "https://")):
+        ORTHO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        dest = ORTHO_CACHE_DIR / f"ortho_{mission.mission_id}.tif"
+        if not dest.exists():
+            try:
+                headers = {"Authorization": f"JWT {odm_pipeline.WEBODM_TOKEN}"} if odm_pipeline.WEBODM_TOKEN else {}
+                with requests.get(uri, headers=headers, stream=True, timeout=60) as r:
+                    r.raise_for_status()
+                    with open(dest, "wb") as fh:
+                        for chunk in r.iter_content(chunk_size=1 << 20):
+                            fh.write(chunk)
+            except Exception as e:
+                dest.unlink(missing_ok=True)
+                return None, f"Orthomosaic download failed: {e}"
+        return str(dest), "ok"
+    if Path(uri).exists():
+        return uri, "ok"
+    return None, f"Orthomosaic path does not exist: {uri}"
+
+
+def run_unet_job(mission_id: str, case_id: str):
+    """
+    Background boundary-extraction job — two-stage pipeline:
+      Stage 1: ONNX U-Net (EfficientNet-B3, sliding window + TTA)
+      Stage 2: Spectral estimator (GrabCut + Canny) — runs when ONNX
+               confidence < MIN_USABLE_MODEL_CONFIDENCE or NO_DETECTION.
+
+    Every outcome is recorded as an explicit boundary_pipeline status.
+    Failures are never silently dropped.
+    """
+    from .spectral_boundary import estimate_boundary_from_ortho, PROVENANCE as SPECTRAL_PROVENANCE
+    db = SessionLocal()
+    try:
+        set_status = lambda s, m, **kw: boundary_repo.set_pipeline_status(db, case_id, s, m, mission_id=mission_id, **kw)  # noqa: E731
+        case = db.get(models.Case, case_id)
+        mission = db.get(models.Mission, mission_id)
+        if not case or not mission:
+            return
+        set_status("RUNNING", "Boundary extraction started (Stage 1: ONNX)")
+
+        tif_path, msg = _resolve_orthomosaic(mission)
+        if not tif_path:
+            set_status("ORTHOMOSAIC_UNAVAILABLE", msg)
+            return
+
+        cadastral = boundary_repo.cadastral_geometry(db, case.parcel_id)
+        if not cadastral:
+            set_status("ERROR", "Parcel has no cadastral geometry")
+            return
+
+        cadastral_feature = {"type": "Feature", "geometry": cadastral, "properties": {}}
+
+        # ── Stage 1: ONNX U-Net ──────────────────────────────────────────────
+        use_spectral_fallback = False
+        with tempfile.TemporaryDirectory() as tmp:
+            res = odm_pipeline.trigger_unet_inference(
+                tif_path, str(Path(tmp) / "candidate.geojson"),
+                cadastral_feature,
+            )
+
+        if res["status"] == "SUCCESS":
+            feature = res["feature"]
+            props = feature["properties"]
+            conf = props.get("confidence")
+            low = conf is not None and conf < boundary_repo.MIN_USABLE_MODEL_CONFIDENCE
+            if low:
+                logger.info(f"ONNX confidence {conf:.4f} < {boundary_repo.MIN_USABLE_MODEL_CONFIDENCE} — triggering spectral fallback")
+                use_spectral_fallback = True
+            else:
+                # ONNX result is good enough — store and finish
+                out = boundary_repo.record_candidate(
+                    db, case, mission_id, feature["geometry"], boundary_repo.PROVENANCE_REAL,
+                    props.get("model_version"), conf,
+                )
+                if out.get("status") != "SUCCESS":
+                    set_status(out.get("status", "ERROR"), out.get("note", "Spatial comparison failed"))
+                    return
+                boundary_repo.fuse_case_evidence(db, case)
+                set_status("SUCCESS", "ONNX candidate stored and compared",
+                           confidence=conf, confidence_semantics=props.get("confidence_semantics"))
+                return
+        else:
+            note = res.get("note", "")
+            if "onnx" in note.lower() or "No such file" in note:
+                set_status("MODEL_UNAVAILABLE", note)
+                return
+            # NO_DETECTION → try spectral
+            logger.info(f"ONNX NO_DETECTION ({note}) — triggering spectral fallback")
+            use_spectral_fallback = True
+
+        # ── Stage 2: Spectral boundary estimator (GrabCut + Canny) ──────────
+        if use_spectral_fallback:
+            set_status("RUNNING", "Stage 2: Spectral edge detection (GrabCut + Canny)")
+            spectral_feature = estimate_boundary_from_ortho(tif_path, cadastral_feature)
+            if not spectral_feature:
+                set_status("NO_DETECTION",
+                           "Both ONNX and spectral estimator failed to detect a boundary")
+                return
+
+            props = spectral_feature["properties"]
+            conf = props.get("confidence")
+            out = boundary_repo.record_candidate(
+                db, case, mission_id,
+                spectral_feature["geometry"],
+                SPECTRAL_PROVENANCE,          # honest provenance label
+                props.get("model_version"),
+                conf,
+            )
+            if out.get("status") != "SUCCESS":
+                set_status(out.get("status", "ERROR"), out.get("note", "Spatial comparison failed"))
+                return
+            boundary_repo.fuse_case_evidence(db, case)
+            set_status(
+                "SUCCESS",
+                "Spectral boundary candidate stored (GrabCut + Canny on real satellite imagery)",
+                confidence=conf,
+                confidence_semantics=props.get("confidence_semantics"),
+            )
+
+    except Exception as e:  # pragma: no cover - last-resort guard, still recorded
+        db.rollback()
+        try:
+            boundary_repo.set_pipeline_status(db, case_id, "ERROR", f"Unhandled pipeline error: {e}", mission_id=mission_id)
+        except Exception:
+            pass
+    finally:
+        db.close()
+
+from fastapi import BackgroundTasks
+
+@app.post("/missions/{mission_id}/run-unet")
+def run_unet(
+    mission_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(models.UserRole.SURVEYOR_DRONE))
+):
+    # mission_id may also be a case_id (legacy client flow): resolve to a real Mission row.
+    mission = db.query(models.Mission).filter(models.Mission.mission_id == mission_id).first()
+    if not mission:
+        mission = (db.query(models.Mission).filter(models.Mission.case_id == mission_id)
+                   .order_by(models.Mission.created_at.desc()).first())
+    if not mission:
+        raise HTTPException(404, "No mission exists for this id; create a mission first")
+
+    auth.assert_parcel_access(mission.parcel_id, current_user)
+    boundary_repo.set_pipeline_status(db, mission.case_id, "QUEUED", "Boundary extraction queued",
+                                      mission_id=mission.mission_id)
+    background_tasks.add_task(run_unet_job, mission.mission_id, mission.case_id)
+    return {"status": "QUEUED", "mission_id": mission.mission_id, "case_id": mission.case_id}
 
 @app.get("/missions/{mission_id}/odm-status")
 def get_odm_status(
@@ -514,76 +778,34 @@ def get_case_geometry(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     auth.assert_parcel_access(case.parcel_id, current_user)
-    parcel = db.get(models.Parcel, case.parcel_id)
-    
-    # Return cadastral geometry (using ST_AsGeoJSON)
-    from sqlalchemy import func
-    import json
-    
-    cadastral_geojson_str = db.execute(
-        select(func.ST_AsGeoJSON(models.Parcel.geom)).where(models.Parcel.parcel_id == case.parcel_id)
-    ).scalar()
-    
-    cadastral_geom = json.loads(cadastral_geojson_str) if cadastral_geojson_str else None
-    
-    # Use Shapely to generate a mathematically sound, realistic U-Net boundary prediction
-    ai_geom = None
-    if cadastral_geom and cadastral_geom.get("coordinates"):
-        try:
-            from shapely.geometry import shape, mapping
-            from shapely.affinity import scale, rotate
-            import random
-            
-            # 1. Convert to Shapely geometry
-            poly = shape(cadastral_geom)
-            
-            # Fix WS-3 Resolution Mismatch: Project to UTM 44N (Guntur) before applying meter-based distortions
-            import pyproj
-            from shapely.ops import transform
-            project_to_utm = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:32644", always_xy=True).transform
-            project_to_wgs = pyproj.Transformer.from_crs("EPSG:32644", "EPSG:4326", always_xy=True).transform
-            
-            poly_utm = transform(project_to_utm, poly)
-            
-            # 2. Simulate ML model uncertainty by applying realistic geometric distortions (in meters)
-            distorted_utm = scale(poly_utm, xfact=1.02, yfact=1.03, origin='centroid')
-            
-            # 3. Rotate slightly to simulate alignment errors
-            distorted_utm = rotate(distorted_utm, angle=0.5, origin='centroid')
-            
-            # 4. Buffer to smooth sharp corners (5 meters is realistic for U-Net blobiness)
-            distorted_utm = distorted_utm.buffer(5.0, resolution=4).buffer(-5.0, resolution=4)
-            
-            # 5. Simplify (Douglas-Peucker) to remove overly dense vertices (1 meter tolerance)
-            distorted_utm = distorted_utm.simplify(1.0, preserve_topology=True)
-            
-            # Project back to WGS84 for GeoJSON output
-            distorted = transform(project_to_wgs, distorted_utm)
-            
-            if distorted.is_valid and not distorted.is_empty:
-                ai_geom = mapping(distorted)
-        except ImportError:
-            # Fallback if shapely is not installed
-            coords = cadastral_geom["coordinates"][0]
-            shifted = [[c[0] - 0.00005, c[1] + 0.00005] for c in coords]
-            ai_geom = {"type": "Polygon", "coordinates": [shifted]}
-        
+    cd = case.case_data or {}
+    cadastral_geom = boundary_repo.cadastral_geometry(db, case.parcel_id)
+    candidate = boundary_repo.latest_candidate(db, case_id)
+    metrics = boundary_repo.latest_metrics(db, case_id)
+
     return {
         "cadastral": {
             "type": "Feature",
             "geometry": cadastral_geom,
-            "properties": {"parcel_id": parcel.parcel_id}
+            "properties": {"parcel_id": case.parcel_id, "layer": "OLD_CADASTRAL"}
         } if cadastral_geom else None,
         "ai_boundary": {
             "type": "Feature",
-            "geometry": ai_geom,
-            "properties": {"source": "u-net-inference"}
-        } if ai_geom else None,
+            "geometry": candidate["geometry"],
+            "properties": {
+                "layer": "AI_CANDIDATE",
+                "provenance": candidate["provenance"],
+                "model_version": candidate["model_version"],
+                "confidence": candidate["confidence"],
+                "low_confidence": candidate["low_confidence"],
+                "computed_at": candidate["computed_at"],
+                "candidate_id": candidate["candidate_id"],
+            }
+        } if candidate else None,
         "drone_coverage": None,
-        "discrepancy": {
-            "area_diff_pct": case.case_data.get("spatial_mismatch_pct", 0),
-            "boundary_shift_m": case.case_data.get("boundary_shift_m", 0)
-        }
+        # Only COMPUTED metrics are returned here; None means "no comparison has been run".
+        "discrepancy": metrics,
+        "pipeline": cd.get("boundary_pipeline"),
     }
 
 @app.get("/missions/{case_id}/plan")
@@ -686,22 +908,49 @@ def get_case_evidence(
     case = db.get(models.Case, case_id)
     if not case: raise HTTPException(status_code=404)
     auth.assert_parcel_access(case.parcel_id, current_user)
-    cd = case.case_data
+    cd = case.case_data or {}
+    parcel = db.get(models.Parcel, case.parcel_id)
+    metrics = boundary_repo.latest_metrics(db, case_id)
+
+    if metrics:
+        spatial = {"source": "COMPUTED_POSTGIS", **metrics}
+    elif "spatial_mismatch_pct" in cd or "boundary_shift_m" in cd:
+        # Values that exist only in seed data: shown, but explicitly labelled and without areas.
+        spatial = {"source": cd.get("spatial_source", "SEEDED_SYNTHETIC"),
+                   "area_diff_pct": cd.get("spatial_mismatch_pct"),
+                   "boundary_shift_m": cd.get("boundary_shift_m"),
+                   "cadastral_area_m2": float(parcel.area_sqm) if parcel and parcel.area_sqm is not None else None}
+    else:
+        spatial = {"source": "NONE"}
+
+    signal = db.query(models.TemporalSignal).filter(models.TemporalSignal.parcel_id == case.parcel_id) \
+        .order_by(models.TemporalSignal.computed_at.desc()).first()
+    if signal:
+        temporal = {"source": signal.data_source, "instability_score": float(signal.instability_score)
+                    if signal.instability_score is not None else None,
+                    "onset_year": signal.onset_year, "n_observations": signal.n_observations,
+                    "analysis_quality": signal.analysis_quality}
+    elif cd.get("temporal_signal"):
+        ts = cd["temporal_signal"]
+        temporal = {"source": cd.get("temporal_source", "SEEDED_SYNTHETIC"),
+                    "instability_score": ts.get("instability_score"), "onset_year": ts.get("onset_year")}
+    else:
+        temporal = {"source": "NONE"}
+
+    ror = db.query(models.RoR).filter(models.RoR.parcel_id == case.parcel_id).first()
+    mut = db.query(models.Mutation).filter(models.Mutation.parcel_id == case.parcel_id).first()
+    reg = db.query(models.Registration).filter(models.Registration.parcel_id == case.parcel_id).first()
     return {
-        "spatial": {
-            "cadastral_area_sqm": 100.0,
-            "drone_area_sqm": 100.0 + (cd.get("spatial_mismatch_pct", 0)),
-            "boundary_shift_m": cd.get("boundary_shift_m", 0)
-        },
-        "temporal": {
-            "instability_score": cd.get("temporal_signal", {}).get("instability_score", 0),
-            "history_summary": "Derived from NDVI time-series."
-        },
+        "spatial": spatial,
+        "temporal": temporal,
         "records": {
-            "ror_status": "present",
-            "mutation_status": cd.get("mutation_status", "approved"),
-            "registration_conflict": cd.get("registration_conflict", False)
-        }
+            "ror_status": ror.status if ror else "not_checked",
+            "mutation_status": mut.mutation_status if mut else "not_checked",
+            "registration_status": reg.status if reg else "not_checked",
+            "registration_conflict": (reg.status == "missing") if reg else None,
+        },
+        "candidate": {k: v for k, v in (boundary_repo.latest_candidate(db, case_id) or {}).items() if k != "geometry"} or None,
+        "pipeline": cd.get("boundary_pipeline"),
     }
 
 from fastapi.responses import Response
@@ -721,64 +970,14 @@ def get_case_report_pdf(
     if not parcel:
         raise HTTPException(status_code=404, detail="Parcel not found")
         
-    cd = case.case_data
-    
-    # Audit trail to get the latest hash
-    latest_audit = db.execute(
-        select(models.AuditLog).where(models.AuditLog.case_id == case_id).order_by(models.AuditLog.timestamp.desc()).limit(1)
-    ).scalar_one_or_none()
-    
-    audit_hash = latest_audit.hash if latest_audit else "no-audit-trail-yet"
-    
     import jinja2
     import weasyprint
-    from pathlib import Path
-    import os
-    
-    template_path = Path(__file__).parent / "templates" / "report.html"
-    
-    with open(template_path, "r") as f:
-        template_str = f.read()
-        
-    template = jinja2.Template(template_str)
-    
-    # Use Mapbox static API for the report images
-    mapbox_token = os.environ.get("MAPBOX_TOKEN", "your_mapbox_token_here")
-    
-    # Get centroid of parcel geometry
-    lon, lat = 78.4867, 17.3850 # Default coordinates if parsing fails
-    try:
-        if parcel.geom:
-            import json
-            from shapely.geometry import shape
-            # In a real app we'd parse the geometry, but here we'll use a fixed location for demo
-            pass
-    except Exception:
-        pass
-        
-    static_map_cadastral = f"https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/{lon},{lat},16,0/400x300?access_token={mapbox_token}"
-    static_map_drone = f"https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/{lon},{lat},16,0/400x300?access_token={mapbox_token}"
-    
-    html_content = template.render(
-        case=case,
-        parcel=parcel,
-        data={
-            "spatial_mismatch_pct": cd.get("spatial_mismatch_pct", 0),
-            "boundary_shift_m": cd.get("boundary_shift_m", 0),
-            "instability_score": cd.get("temporal_signal", {}).get("instability_score", 0),
-            "confidence_score": cd.get("confidence_score", 0.85)
-        },
-        static_map_cadastral=static_map_cadastral,
-        static_map_drone=static_map_drone,
-        timelapse_frames=[
-            {"date": "2021-08-15", "url": static_map_cadastral},
-            {"date": "2021-11-20", "url": static_map_cadastral},
-            {"date": "2022-02-10", "url": static_map_cadastral},
-            {"date": "2022-05-05", "url": static_map_cadastral}
-        ],
-        audit_hash=audit_hash
-    )
-    
+    from pathlib import Path as _P
+    from . import report_service
+
+    ctx = report_service.build_report_context(db, case)
+    template_str = (_P(__file__).parent / "templates" / "report.html").read_text()
+    html_content = jinja2.Template(template_str).render(**ctx)
     pdf_bytes = weasyprint.HTML(string=html_content).write_pdf()
     
     return Response(
@@ -823,7 +1022,10 @@ def get_audit(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    auth.assert_parcel_access(db.get(models.Case, case_id).parcel_id, current_user)
+    case = db.get(models.Case, case_id)
+    if not case:
+        raise HTTPException(404, "Case not found")
+    auth.assert_parcel_access(case.parcel_id, current_user)
     return db.query(models.AuditLog).filter(models.AuditLog.case_id == case_id).order_by(models.AuditLog.seq).all()
 
 @app.get("/audit/verify/{case_id}")
@@ -936,6 +1138,10 @@ def get_mission_qc_summary(
     Aggregate blur pass/fail counts for a mission.
     Consumed by PostFlightQCScreen to show the QC dashboard.
     """
+    mission = db.get(models.Mission, mission_id)
+    if not mission:
+        raise HTTPException(404, "Mission not found")
+    auth.assert_parcel_access(db.get(models.Case, mission.case_id).parcel_id, current_user)
     images = db.query(models.MissionImage).filter(
         models.MissionImage.mission_id == mission_id
     ).all()

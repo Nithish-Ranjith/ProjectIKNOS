@@ -85,7 +85,7 @@ class SyncWorker(appContext: Context, params: WorkerParameters) :
     }
 
     companion object {
-        private const val WORK_NAME = "TerraTraceSyncWorker"
+        private const val WORK_NAME = "IKNOSSyncWorker"
 
         /** Call once on app startup — schedules periodic sync + immediate run. */
         fun schedulePeriodicSync(context: Context) {

@@ -44,8 +44,17 @@ export const AuthRoute: React.FC<AuthRouteProps> = ({ allowedRoles }) => {
 
   if (loading) {
     return (
-      <div className="app-container" style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <p><span className="spinner"></span> Loading session...</p>
+      <div style={{
+        height: '100vh', width: '100vw', 
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+        background: '#0a1628', color: 'white', fontFamily: 'var(--font-ui)'
+      }}>
+        <div style={{
+          width: 48, height: 48, background: 'var(--color-terracotta)', clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', marginBottom: '16px',
+          animation: 'pulse 2s infinite'
+        }} />
+        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.03em' }}>IKNOS</h1>
+        <p style={{ marginTop: '8px', color: 'rgba(255,255,255,0.6)', fontSize: '13px' }}>Loading session...</p>
       </div>
     )
   }

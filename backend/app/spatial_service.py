@@ -26,8 +26,9 @@ from sqlalchemy.orm import Session
 from . import models
 
 
-# UTM zone for Andhra Pradesh / Telangana (most parcels in 44N)
-_UTM_SRID = 32644   # WGS84 UTM Zone 44N — covers AP/Telangana
+def utm_srid_for_lon(lon: float) -> int:
+    """WGS84 UTM (northern hemisphere) EPSG code for a longitude. India is entirely northern."""
+    return 32600 + int((lon + 180.0) // 6) + 1
 
 
 def compute_spatial_discrepancy(
@@ -35,6 +36,8 @@ def compute_spatial_discrepancy(
     parcel_id: str,
     candidate_geojson: dict,
     case_id: Optional[str] = None,
+    mission_id: Optional[str] = None,
+    positioning_quality: str = "STANDARD_GNSS",
 ) -> dict:
     """
     Compare candidate boundary (from U-Net) vs cadastral boundary (in PostGIS parcels table).
@@ -88,6 +91,13 @@ def compute_spatial_discrepancy(
 
     candidate_geojson_str = json.dumps(geom_dict)
 
+    # UTM zone derived from the parcel itself (never assumed)
+    lon_row = db.execute(
+        text("SELECT ST_X(ST_Centroid(geom)) FROM parcels WHERE parcel_id = :pid"),
+        {"pid": parcel_id},
+    ).fetchone()
+    utm_srid = utm_srid_for_lon(float(lon_row[0]))
+
     # 3. Run PostGIS spatial analysis
     sql = text("""
         WITH
@@ -140,7 +150,7 @@ def compute_spatial_discrepancy(
         result = db.execute(sql, {
             "parcel_id":        parcel_id,
             "candidate_geojson": candidate_geojson_str,
-            "utm_srid":         _UTM_SRID,
+            "utm_srid":         utm_srid,
         }).fetchone()
     except Exception as e:
         return {
@@ -171,28 +181,8 @@ def compute_spatial_discrepancy(
     topology_valid = bool(cad_valid and cand_valid)
     hausdorff_m_val = round(float(hausdorff_m), 2) if hausdorff_m is not None else None
 
-    # 5. Persist to discrepancy_metrics table
-    try:
-        dm = models.DiscrepancyMetric(
-            metric_id=metric_id,
-            parcel_id=parcel_id,
-            case_id=case_id,
-            area_diff_pct=area_diff_pct,
-            boundary_shift_m=hausdorff_m_val,
-            intersection_m2=round(inter_area, 2),
-            difference_m2=round(diff_area, 2),
-            iou=iou,
-            candidate_area_m2=round(cand_area, 2),
-            cadastral_area_m2=round(cad_area, 2),
-            topology_valid=topology_valid,
-            computed_at=now,
-        )
-        db.add(dm)
-        db.commit()
-    except Exception:
-        db.rollback()  # Persist failure should not block returning results
-
-    return {
+    # 5. Persist to discrepancy_metrics (append-only; every computation is kept for audit)
+    output = {
         "status":            "SUCCESS",
         "metric_id":         metric_id,
         "area_diff_pct":     area_diff_pct,
@@ -203,12 +193,38 @@ def compute_spatial_discrepancy(
         "candidate_area_m2": round(cand_area, 2),
         "cadastral_area_m2": round(cad_area, 2),
         "topology_valid":    topology_valid,
+        "utm_srid":          utm_srid,
+        "computed_at":       now.isoformat(),
         "note": (
             "Spatial discrepancy computed via PostGIS ST_Intersection, ST_Difference, "
-            f"ST_HausdorffDistance in UTM Zone {_UTM_SRID}. "
+            f"ST_HausdorffDistance in EPSG:{utm_srid}. "
             "These are geometric signals — NOT legal boundary determinations."
-        )
+        ),
     }
+    persisted = False
+    if case_id:
+        try:
+            db.add(models.DiscrepancyMetrics(
+                metrics_id=metric_id,
+                case_id=case_id,
+                mission_id=mission_id,
+                area_diff_pct=area_diff_pct,
+                boundary_shift_m=hausdorff_m_val,
+                iou=iou,
+                intersection_area_sqm=round(inter_area, 2),
+                difference_area_sqm=round(diff_area, 2),
+                topology_valid=topology_valid,
+                positioning_quality=positioning_quality,
+                computed_at=now,
+                raw_output=output,
+            ))
+            db.commit()
+            persisted = True
+        except Exception as e:
+            db.rollback()
+            output["persist_error"] = str(e)
+    output["persisted"] = persisted
+    return output
 
 
 def get_parcel_geojson(db: Session, parcel_id: str) -> Optional[dict]:

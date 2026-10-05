@@ -1,0 +1,159 @@
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.titleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-1);
+}
+
+.searchContainer {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+}
+
+.searchInput {
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  outline: none;
+  width: 250px;
+  background: var(--bg-raised);
+  color: var(--text-1);
+  transition: border-color 0.2s;
+}
+
+.searchInput:focus {
+  border-color: var(--accent);
+}
+
+.filterBar {
+  padding: 1.5rem 1.5rem 0;
+}
+
+.filterTabs {
+  display: flex;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-2);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tabActive {
+  font-weight: 600;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab:hover:not(.tabActive) {
+  color: var(--text-1);
+}
+
+.tableArea {
+  padding: 1.5rem;
+  flex: 1;
+  overflow: auto;
+}
+
+.tableContainer {
+  padding: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border-radius: 8px;
+  box-shadow: var(--shadow-panel);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.thead {
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+}
+
+.th {
+  padding: 0.75rem 1rem;
+  color: var(--text-2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+}
+
+.tr {
+  cursor: pointer;
+  background: var(--panel);
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border);
+}
+
+.tr:hover {
+  background: var(--panel-hover);
+}
+
+.td {
+  padding: 1rem;
+  color: var(--text-2);
+}
+
+.tdId {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.tdEmpty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-3);
+}
+
+.statusBadge {
+  display: inline-flex;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  text-transform: capitalize;
+}

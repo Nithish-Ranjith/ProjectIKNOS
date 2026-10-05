@@ -48,4 +48,4 @@ def process_unscored_images(capture_dir: str, threshold: float = 100.0):
 
 if __name__ == "__main__":
     # Test execution
-    process_unscored_images("/tmp/terratrace_captures")
+    process_unscored_images("/tmp/iknos_captures")

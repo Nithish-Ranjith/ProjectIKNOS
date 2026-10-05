@@ -4,7 +4,7 @@
 - JWT with HS256, 8-hour expiry for field sessions.
 - Role and authority tier embedded in token, validated server-side on every request.
 - Token stored in Android EncryptedSharedPreferences (AES256-GCM).
-- `SECRET_KEY` must be set via `TERRATRACE_SECRET_KEY` env var in production.
+- `SECRET_KEY` must be set via `IKNOS_SECRET_KEY` env var in production.
   Default value is a placeholder — DO NOT USE IN PRODUCTION.
 
 ## Role Separation

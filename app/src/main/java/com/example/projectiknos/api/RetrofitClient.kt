@@ -53,9 +53,9 @@ object RetrofitClient {
         .build()
 
     @Volatile
-    private var _instance: TerraTraceApi? = null
+    private var _instance: IKNOSApi? = null
 
-    val instance: TerraTraceApi
+    val instance: IKNOSApi
         get() {
             return _instance ?: synchronized(this) {
                 _instance ?: run {
@@ -64,7 +64,7 @@ object RetrofitClient {
                         .client(buildClient())
                         .addConverterFactory(GsonConverterFactory.create())
                         .build()
-                    val api = retrofit.create(TerraTraceApi::class.java)
+                    val api = retrofit.create(IKNOSApi::class.java)
                     _instance = api
                     api
                 }

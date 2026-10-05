@@ -34,7 +34,7 @@ import kotlin.math.log
 
 /**
  * CameraSchedulerService — Foreground service that drives aerial image capture
- * for a TerraTrace drone survey mission.
+ * for a IKNOS drone survey mission.
  *
  * Key design decisions:
  *  - Uses CameraX [ImageCapture] for lifecycle-safe camera access.
@@ -410,14 +410,14 @@ class CameraSchedulerService : Service() {
 
     private fun createNotificationChannel() {
         val ch = NotificationChannel(CHANNEL_ID, "Drone Capture", NotificationManager.IMPORTANCE_LOW)
-        ch.description = "TerraTrace aerial image capture service"
+        ch.description = "IKNOS aerial image capture service"
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .createNotificationChannel(ch)
     }
 
     private fun createNotification(text: String): Notification =
         NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("TerraTrace Drone Capture")
+            .setContentTitle("IKNOS Drone Capture")
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setOngoing(true)

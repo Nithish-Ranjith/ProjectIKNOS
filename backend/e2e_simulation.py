@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-backend/e2e_simulation.py — TerraTrace End-to-End Workflow Debugger
+backend/e2e_simulation.py — IKNOS End-to-End Workflow Debugger
 
 Simulates the COMPLETE field officer day:
   1.  Backend health check
@@ -211,7 +211,7 @@ MOCK_COORDS = [
 ]
 
 if mission_id and drone_token:
-    boundary = "----TerraTraceBoundary"
+    boundary = "----IKNOSBoundary"
 
     for i, (lon, lat) in enumerate(MOCK_COORDS):
         img_id = str(uuid.uuid4())
@@ -473,5 +473,5 @@ if failed:
             print(f"         → {r['err']}")
     sys.exit(1)
 else:
-    print(f"  {GREEN}{BOLD}✓ All steps passed — TerraTrace E2E workflow is healthy.{RESET}\n")
+    print(f"  {GREEN}{BOLD}✓ All steps passed — IKNOS E2E workflow is healthy.{RESET}\n")
     sys.exit(0)

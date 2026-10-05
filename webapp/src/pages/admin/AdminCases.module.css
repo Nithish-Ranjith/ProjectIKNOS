@@ -1,0 +1,193 @@
+.kpiCard {
+  flex: 1 1 180px;
+  padding: 1.25rem;
+  border-left: 4px solid var(--accent);
+  background: var(--panel);
+  border-radius: 8px;
+  box-shadow: var(--shadow-panel);
+}
+
+.kpiCardAccent {
+  border-left: 4px solid var(--red);
+}
+
+.kpiLabel {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpiValue {
+  font-size: 2rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  margin-top: 0.25rem;
+}
+
+.kpiValueAccent {
+  color: var(--red);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  height: 64px;
+}
+
+.topbarBrand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brandText {
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.brandDivider {
+  opacity: 0.5;
+  color: var(--text-3);
+}
+
+.brandSubtitle {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.topbarNav {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.sectionHeader {
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.kpiGrid {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.filterHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.filterHeaderTitle {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.filterBar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tableContainer {
+  padding: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border-radius: 8px;
+  box-shadow: var(--shadow-panel);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.th {
+  padding: 0.75rem 1rem;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--bg-raised);
+  color: var(--text-2);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.tr {
+  cursor: pointer;
+  background: var(--panel);
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border);
+}
+
+.tr:hover {
+  background: var(--panel-hover);
+}
+
+.td {
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.tdMono {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.tdId {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tdSubtext {
+  color: var(--text-3);
+  font-size: 0.75rem;
+}
+
+.emptyState {
+  padding: 3rem;
+  text-align: center;
+  color: var(--text-3);
+}
+
+.loadingState {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-3);
+}
+
+.errorState {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--red-dim);
+  border: 1px solid var(--red);
+  padding: 16px;
+  border-radius: 8px;
+  color: var(--red);
+}

@@ -1,0 +1,186 @@
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+  height: 100vh;
+}
+
+.header {
+  height: 64px;
+  z-index: 100;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+}
+
+.headerBrand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+}
+
+.headerTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.mainLayout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 400px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow: auto;
+}
+
+.parcelTitle {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  margin: 0 0 8px 0;
+  color: var(--text-1);
+}
+
+.parcelMeta {
+  color: var(--text-2);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusCard {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid;
+}
+
+.statusOpen {
+  background: var(--amber-dim);
+  border-color: var(--amber);
+}
+
+.statusField {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.statusClosed {
+  background: var(--green-dim);
+  border-color: var(--green);
+}
+
+.statusTitle {
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusTitleOpen { color: var(--amber); }
+.statusTitleField { color: var(--accent); }
+.statusTitleClosed { color: var(--green); }
+
+.statusDesc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-1);
+  line-height: 1.5;
+}
+
+.horizontalDivider {
+  height: 1px;
+  background: var(--border);
+}
+
+.legalSectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.legalActionList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.legalActionBtn {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.legalActionText {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mapContainer {
+  flex: 1;
+  position: relative;
+}
+
+.loadingGis {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loadingSpinner {
+  border-color: var(--border);
+  border-top-color: var(--accent);
+  width: 40px;
+  height: 40px;
+}
+
+@media (max-width: 1024px) {
+  .mainLayout {
+    flex-direction: column;
+    overflow: auto;
+  }
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .mapContainer {
+    min-height: 400px;
+  }
+}

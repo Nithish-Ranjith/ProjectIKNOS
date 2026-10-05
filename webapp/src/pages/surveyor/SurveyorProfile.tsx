@@ -20,48 +20,57 @@ export const SurveyorProfile: React.FC = () => {
       {loading ? (
         <div style={{ color: 'var(--color-text-secondary)' }}>Loading profile...</div>
       ) : profile ? (
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', animation: 'fadeIn 0.3s ease' }}>
           {/* Main Info Card */}
-          <div className="card" style={{ flex: '1 1 300px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-brand-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-brand)' }}>
-                <User size={32} />
+          <div className="card" style={{ flex: '1 1 300px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', background: 'var(--panel)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(62,155,247,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', boxShadow: 'inset 0 0 0 1px var(--border)' }}>
+                <User size={40} />
               </div>
               <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>{profile.name}</h2>
-                <div style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginTop: '4px' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: 600, margin: 0, color: 'var(--text-1)' }}>{profile.name}</h2>
+                <div style={{ color: 'var(--text-3)', fontSize: '13px', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
                   ID: {profile.id}
                 </div>
               </div>
             </div>
             
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', marginTop: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>Role</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500, color: 'var(--color-brand)' }}>
-                  <Shield size={14} /> Certified Surveyor
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <span style={{ color: 'var(--text-3)', fontSize: '13px' }}>Clearance Level</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500, color: 'var(--green)', background: 'var(--green-dim)', padding: '4px 8px', borderRadius: '4px' }}>
+                  <Shield size={14} /> Certified Surveyor (Level 3)
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>Contact</span>
-                <span style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>{profile.phone}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <span style={{ color: 'var(--text-3)', fontSize: '13px' }}>Contact Phone</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>{profile.phone}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <span style={{ color: 'var(--text-3)', fontSize: '13px' }}>Drone Model</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>DJI Mavic 3 Enterprise</span>
               </div>
             </div>
           </div>
 
           {/* Stats Card */}
-          <div className="card" style={{ flex: '1 1 300px', padding: '24px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 16px 0', color: 'var(--color-text-secondary)' }}>ACTIVITY STATS</h3>
+          <div className="card" style={{ flex: '1 1 300px', padding: '32px', background: 'var(--panel)' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 24px 0', color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>ACTIVITY STATS</h3>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                <div style={{ color: 'var(--color-text-secondary)', fontSize: '12px', marginBottom: '8px' }}>Total Missions</div>
-                <div style={{ fontSize: '24px', fontWeight: 600 }}>{profile.linked_parcels?.length || 12}</div>
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '24px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <div style={{ color: 'var(--text-3)', fontSize: '13px', marginBottom: '12px' }}>Total Missions</div>
+                <div style={{ fontSize: '32px', fontWeight: 600, color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>{profile.linked_parcels?.length || 12}</div>
               </div>
               
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                <div style={{ color: 'var(--color-text-secondary)', fontSize: '12px', marginBottom: '8px' }}>Pending Cases</div>
-                <div style={{ fontSize: '24px', fontWeight: 600 }}>0</div>
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '24px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <div style={{ color: 'var(--text-3)', fontSize: '13px', marginBottom: '12px' }}>Active Flights</div>
+                <div style={{ fontSize: '32px', fontWeight: 600, color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>0</div>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '24px', borderRadius: '8px', border: '1px solid var(--border)', gridColumn: 'span 2' }}>
+                <div style={{ color: 'var(--text-3)', fontSize: '13px', marginBottom: '12px' }}>Flight Hours YTD</div>
+                <div style={{ fontSize: '32px', fontWeight: 600, color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>142.5h</div>
               </div>
             </div>
           </div>

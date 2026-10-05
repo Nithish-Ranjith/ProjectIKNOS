@@ -1,0 +1,16 @@
+{
+  "case_id": "C01",
+  "provenance": "SIMULATED_PRECOMPUTED",
+  "purpose": "Deterministic golden-path demo candidate boundary for the SIH video. NOT U-Net output.",
+  "reason": "The shipped U-Net checkpoint (best val IoU 0.42) produced no detection on the available imagery (max probability 0.14), and no drone orthomosaic exists for this parcel. A documented geometric perturbation of the cadastral polygon is used instead and is labelled as simulated everywhere.",
+  "transform": {
+    "crs": "UTM zone derived from parcel longitude",
+    "translate_east_m": 4.0,
+    "translate_north_m": 3.0,
+    "buffer_m": 1.5,
+    "join_style": "mitre",
+    "simplify_tolerance_m": 0.05
+  },
+  "candidate_file": "candidate.geojson",
+  "model_confidence": null
+}

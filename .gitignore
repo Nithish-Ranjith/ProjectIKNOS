@@ -30,3 +30,6 @@ backend/backend/uploads/
 *.pth
 *.onnx
 *.csv
+
+.env
+.env.local

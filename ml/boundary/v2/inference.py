@@ -1,4 +1,4 @@
-Standalone inference script for the TerraTrace v2 (centroid-conditioned) model.
+Standalone inference script for the IKNOS v2 (centroid-conditioned) model.
 Only needs: onnxruntime, opencv-python, numpy
 
 The model needs to know WHICH parcel to extract -- pass the target parcel's

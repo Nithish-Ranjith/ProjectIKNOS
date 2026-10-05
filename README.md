@@ -1,4 +1,4 @@
-# IKNOS — TerraTrace Land Survey Platform
+# IKNOS — IKNOS Land Survey Platform
 
 > **Drone-powered land boundary verification and dispute resolution for Andhra Pradesh**
 

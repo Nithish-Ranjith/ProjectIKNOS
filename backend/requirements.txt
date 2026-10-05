@@ -1,4 +1,4 @@
-# TerraTrace MVP Backend Requirements
+# IKNOS MVP Backend Requirements
 
 # Core
 fastapi==0.111.0

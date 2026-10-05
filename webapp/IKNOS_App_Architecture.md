@@ -1,4 +1,4 @@
-# TerraTrace — Application Architecture & Screen-Level Specification
+# IKNOS — Application Architecture & Screen-Level Specification
 **Three roles: USER · SURVEYOR · ADMIN/OFFICER**
 Every module, every screen, every button — where it leads, and which layer owns it.
 

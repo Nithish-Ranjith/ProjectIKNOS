@@ -20,7 +20,7 @@ from pathlib import Path
 # from picamera2 import Picamera2
 
 class CaptureService:
-    def __init__(self, capture_dir: str = "/tmp/terratrace_captures", distance_interval_m: float = 10.0):
+    def __init__(self, capture_dir: str = "/tmp/iknos_captures", distance_interval_m: float = 10.0):
         self.capture_dir = Path(capture_dir)
         self.capture_dir.mkdir(parents=True, exist_ok=True)
         self.distance_interval_m = distance_interval_m

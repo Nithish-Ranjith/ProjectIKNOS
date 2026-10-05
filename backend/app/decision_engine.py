@@ -1,5 +1,5 @@
 """
-backend/app/decision_engine.py — Core deterministic Decision Engine for TerraTrace MVP.
+backend/app/decision_engine.py — Core deterministic Decision Engine for IKNOS MVP.
 
 This module implements the full flowchart logic EXCLUDING ML model calls.
 All ML plugin points are clearly marked with TODO(ML) comments so a model can

@@ -28,7 +28,7 @@ def submit_to_odm(mission_id: str, image_dir: str, project_name: Optional[str] =
             "note": "WEBODM_TOKEN not set. ODM pipeline requires a running WebODM instance."
         }
     try:
-        project_name = project_name or f"TerraTrace_{mission_id}"
+        project_name = project_name or f"IKNOS_{mission_id}"
         project_resp = requests.post(
             f"{WEBODM_URL}/api/projects/",
             headers={"Authorization": f"JWT {WEBODM_TOKEN}"},
@@ -83,39 +83,33 @@ def poll_odm_task(task_id: str, project_id: str) -> dict:
         return {"status": "ERROR", "note": str(e)}
 
 
-def trigger_unet_inference(tif_path: str, output_geojson: str) -> dict:
+def trigger_unet_inference(tif_path: str, output_geojson: str, cadastral_geojson: dict) -> dict:
     """
-    Runs the newly implemented Multi-Task ResUNet-a inference pipeline on the
-    downloaded orthomosaic, vectorizes to GeoJSON, and saves it.
+    Runs the v2 EfficientNet-B3 ONNX inference pipeline on the
+    downloaded orthomosaic, extracts the boundary polygon, and saves it.
     """
     try:
-        import sys
-        sys.path.append(str(Path(__file__).parent.parent.parent))
-        from models.architectures.resunet_a import build_model
-        from models.inference.orthomosaic_tiler import run_tiled_inference
-        from models.inference.boundary_vectorizer import vectorize_predictions, save_geojson
+        from app.unet_service import process_orthophoto_for_parcel
+        import json
         
-        # In a real setup, weights_path would point to the trained model
-        weights = Path(__file__).parent.parent.parent / "models" / "weights" / "resunet_boundary_detector.pth"
-        if not weights.exists():
-            return {"status": "ERROR", "note": f"Model weights not found at {weights}"}
-
-        model = build_model(weights_path=str(weights), device="cpu")
-        preds = run_tiled_inference(tif_path, model, device="cpu", batch_size=2)
+        feature = process_orthophoto_for_parcel(tif_path, cadastral_geojson)
+        if not feature:
+            return {"status": "ERROR", "note": "No parcel detected or inference failed"}
+            
+        geojson = {
+            "type": "FeatureCollection",
+            "features": [feature],
+            "metadata": {"n_candidates": 1}
+        }
         
-        geojson = vectorize_predictions(
-            extent_mask=preds["extent"],
-            boundary_mask=preds["boundary"],
-            distance_map=preds["distance"],
-            affine_transform=preds["tiler"].transform
-        )
-        
-        save_geojson(geojson, output_geojson)
-        
+        with open(output_geojson, "w") as f:
+            json.dump(geojson, f, indent=2)
+            
         return {
             "status": "SUCCESS",
             "geojson_path": output_geojson,
-            "num_candidates": geojson.get("metadata", {}).get("n_candidates", 0)
+            "num_candidates": 1,
+            "feature": feature
         }
     except Exception as e:
         return {"status": "ERROR", "note": f"U-Net Inference failed: {e}"}

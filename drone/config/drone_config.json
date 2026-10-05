@@ -11,6 +11,6 @@
     "baud": 57600
   },
   "storage": {
-    "capture_dir": "/tmp/terratrace_captures"
+    "capture_dir": "/tmp/iknos_captures"
   }
 }

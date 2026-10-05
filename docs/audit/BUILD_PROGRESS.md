@@ -1,6 +1,6 @@
-# TerraTrace Web App — Build Progress Tracker
+# IKNOS Web App — Build Progress Tracker
 
-> Cross-checked against: `TerraTrace_App_Architecture.md` (all sections)
+> Cross-checked against: `IKNOS_App_Architecture.md` (all sections)
 > Standards: Design system (navy/terracotta/sage, Cambria/Calibri/mono), 3-state fetches, no hardcoded URLs, stubs clearly marked, ML sync contract maintained.
 
 ---

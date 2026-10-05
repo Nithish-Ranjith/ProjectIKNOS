@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TerraTraceApp(authManager)
+                    IKNOSApp(authManager)
                 }
             }
         }
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TerraTraceApp(authManager: AuthManager) {
+fun IKNOSApp(authManager: AuthManager) {
     val navController = rememberNavController()
 
     val initialRole = authManager.getRole()

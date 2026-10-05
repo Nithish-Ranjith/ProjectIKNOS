@@ -21,6 +21,7 @@ class UserOut(BaseModel):
     username: str
     role: str
     authority_tier: int
+    owned_parcel_ids: Optional[List[str]] = []
 
 # --- Parcels & Cases ---
 class ParcelOut(BaseModel):

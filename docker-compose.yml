@@ -9,11 +9,11 @@ services:
       - "8000:8000"
     env_file:
       - ./backend/.env
+    volumes:
+      - ./models:/models
     restart: unless-stopped
 
   webapp:
-    build:
-      context: ./webapp
     container_name: iknos-webapp
     ports:
       - "3000:80"

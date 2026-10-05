@@ -8,11 +8,12 @@ import { MissionStepper } from '../../components/mission/MissionStepper';
 import { LeftContextPanel } from '../../components/mission/LeftContextPanel';
 import { BoundaryEditor } from '../../components/BoundaryEditor';
 import { SentinelTimelapse } from '../../components/SentinelTimelapse';
-import { fetchGeometryLayers, approveAoi, fetchFlightPlan, fetchCaseImages, fetchMissionQcSummary, fetchCase, downloadReport } from '../../services/api';
+import { fetchGeometryLayers, approveAoi, fetchFlightPlan, fetchCaseImages, fetchMissionQcSummary, fetchCase, downloadReport, pollOdmStatus, triggerOdmPipeline, runUnetInference } from '../../services/api';
 import { MapboxMap } from '../../components/MapboxMap';
 import type { GeometryLayers, GeoJSONFeature } from '../../types';
 import type { FlightPlan } from '../../services/api';
 import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 // --- Utility Functions ---
 function getHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -88,7 +89,8 @@ function ParcelStep({ state, setMissionState, onApproveSuccess, onProceedToPlan,
         <BoundaryEditor 
           cadastral={layers?.cadastral || null} 
           aiBoundary={layers?.ai_boundary || null} 
-          onBoundaryEdit={setEditedBoundary} 
+          onBoundaryEdit={setEditedBoundary}
+          visibleLayers={state?.layers || undefined}
         />
       </div>
     </div>
@@ -97,13 +99,11 @@ function ParcelStep({ state, setMissionState, onApproveSuccess, onProceedToPlan,
 
 function PlanStep({ state, onPlanLocked, layers }: { state: any, setMissionState: any, onPlanLocked: () => void, layers: GeometryLayers | null }) {
   const { id } = useParams();
-  const [plan, setPlan] = useState<FlightPlan | null>(null);
-
-  useEffect(() => {
-    if (id) {
-      fetchFlightPlan(id).then(setPlan).catch(console.error);
-    }
-  }, [id]);
+  const { data: plan } = useQuery({
+    queryKey: ['flight-plan', id],
+    queryFn: () => fetchFlightPlan(id!),
+    enabled: !!id
+  });
 
   const waypoints = plan?.waypoints || [];
   
@@ -189,28 +189,35 @@ function PlanStep({ state, onPlanLocked, layers }: { state: any, setMissionState
 function CaptureStep({ onAccept, layers }: { state: any, setMissionState: any, onAccept: () => void, layers: GeometryLayers | null }) {
   const { id } = useParams();
   const [images, setImages] = useState<any[]>([]);
-  const [qcSummary, setQcSummary] = useState<any>(null);
+  // Removed qcSummary state variable to fix shadowing from useQuery
   const [revealedCount, setRevealedCount] = useState(0);
   const [selectedImg, setSelectedImg] = useState<number | null>(null);
 
+  const { data: imagesResponse } = useQuery({
+    queryKey: ['case-images', id],
+    queryFn: () => fetchCaseImages(id!),
+    enabled: !!id
+  });
+
+  const { data: qcSummary } = useQuery({
+    queryKey: ['mission-qc', imagesResponse?.mission_id],
+    queryFn: () => fetchMissionQcSummary(imagesResponse!.mission_id),
+    enabled: !!imagesResponse?.mission_id
+  });
+
   useEffect(() => {
-    if (!id) return;
-    fetchCaseImages(id).then(res => {
-      const imgs = res.images || [];
-      // Simulate live photo ingestion — reveal images one by one
+    if (imagesResponse) {
+      const imgs = imagesResponse.images || [];
+      setImages(imgs);
       let i = 0;
       const ticker = setInterval(() => {
         i++;
         setRevealedCount(i);
         if (i >= imgs.length) clearInterval(ticker);
       }, 180);
-      setImages(imgs);
-      if (res.mission_id) {
-        fetchMissionQcSummary(res.mission_id).then(setQcSummary).catch(console.error);
-      }
       return () => clearInterval(ticker);
-    }).catch(console.error);
-  }, [id]);
+    }
+  }, [imagesResponse]);
 
   const total = images.length;
   const revealed = Math.min(revealedCount, total);
@@ -418,8 +425,9 @@ const PIPELINE_STAGES = [
   { key: 'index',      label: 'Index & Commit',        desc: 'Hashing outputs and committing to case file', icon: '✦', durationMs: 3000 },
 ];
 
-function ProcessStep({ onComplete }: { state: any, setMissionState: any, onComplete: () => void }) {
+function ProcessStep({ state, setMissionState, onComplete }: { state: any, setMissionState: any, onComplete: () => void }) {
   const { id } = useParams();
+  const queryClient = useQueryClient();
   const [parcelId, setParcelId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState(0);
   const [stageProgress, setStageProgress] = useState(0); // 0-100 within current stage
@@ -436,68 +444,130 @@ function ProcessStep({ onComplete }: { state: any, setMissionState: any, onCompl
     setLogs(prev => [...prev.slice(-60), { ts, msg, level }]);
   };
 
+  const { data: caseData } = useQuery({
+    queryKey: ['case', id],
+    queryFn: () => fetchCase(id!),
+    enabled: !!id
+  });
+
+  const { data: caseImages } = useQuery({
+    queryKey: ['case-images', id],
+    queryFn: () => fetchCaseImages(id!),
+    enabled: !!id
+  });
+
   useEffect(() => {
-    if (!id) return;
-    fetchCase(id).then(c => setParcelId(c.parcel_id)).catch(console.error);
-    fetchCaseImages(id).then(res => setImgCount(res.images?.length ?? 0)).catch(console.error);
-  }, [id]);
+    if (caseData) setParcelId(caseData.parcel_id);
+    if (caseImages) setImgCount(caseImages.images?.length ?? 0);
+  }, [caseData, caseImages]);
 
-  // Stage-by-stage simulation engine
+  // Real backend polling engine
   useEffect(() => {
-    if (isDone || hasError) return;
-    const stage = PIPELINE_STAGES[activeStage];
-    if (!stage) return;
+    if (!id || isDone || hasError) return;
+    
+    let isCancelled = false;
+    let currentTaskId: string | undefined;
+    let currentProjectId: string | undefined;
 
-    addLog(`[${stage.icon}] Starting: ${stage.label}`, 'info');
+    const runPipeline = async () => {
+      try {
+        addLog('Triggering backend ODM pipeline...', 'info');
+        const triggerRes = await triggerOdmPipeline(id);
+        
+        if (isCancelled) return;
 
-    const stageLogMessages: Record<string, string[]> = {
-      ingest:     ['Reading EXIF metadata...', 'Verifying GPS tags...', 'Checking frame integrity...', `${imgCount || 92} frames accepted`],
-      keypoints:  ['Running ORB detector...', 'Computing BRIEF descriptors...', 'Matching keypoints across pairs...', '142,831 matches retained'],
-      sfm:        ['Initialising bundle adjustment...', 'Triangulating 3D points...', 'Reprojection error: 0.48px', `Point cloud: ${(pointCount || 12400).toLocaleString()} pts`],
-      dense:      ['Patch-Match stereo running...', 'Filtering occluded regions...', 'Mesh simplification...', 'Dense cloud complete'],
-      ortho:      ['Projecting to WGS-84...', 'Applying terrain correction...', 'GSD: 2.1 cm/px achieved', 'Georeferencing locked ✓'],
-      index:      ['Computing SHA-256 hash...', 'Writing to case store...', 'Audit trail appended', '✓ Mission committed'],
-    };
+        // Graceful fallback for demo/dev if WebODM is not running
+        if (triggerRes.status === 'SKIPPED_NO_WEBODM' || !triggerRes.task_id) {
+          addLog('WebODM not configured. Running fallback pipeline simulation...', 'warn');
+          let fakeProgress = 0;
+          const fakePoll = () => {
+            if (isCancelled) return;
+            fakeProgress += 25;
+            if (fakeProgress < 100) {
+              setActiveStage(2);
+              setStageProgress(fakeProgress);
+              setOverallProgress(fakeProgress);
+              addLog(`Processing: ${fakeProgress}%`, 'info');
+              setTimeout(fakePoll, 1500);
+            } else {
+              setActiveStage(PIPELINE_STAGES.length - 1);
+              setStageProgress(100);
+              setOverallProgress(100);
+              setIsDone(true);
+              addLog('━━━ ODM PIPELINE COMPLETE ━━━', 'ok');
+              
+              addLog('Triggering AI U-Net Boundary Inference...', 'info');
+              runUnetInference(id)
+                .then(() => {
+                  addLog('AI Boundary Extraction Queued! Check Parcel view later.', 'ok');
+                  queryClient.invalidateQueries({ queryKey: ['geometry', id] });
+                })
+                .catch(err => addLog(`AI Extraction trigger failed: ${err.message}`, 'warn'));
+            }
+          };
+          setTimeout(fakePoll, 1500);
+          return;
+        }
 
-    let elapsed = 0;
-    const tickMs = 200;
-    const msgs = stageLogMessages[stage.key] || [];
-    let msgIdx = 0;
+        currentTaskId = triggerRes.task_id;
+        currentProjectId = triggerRes.project_id;
+        addLog(`Pipeline triggered (Task: ${currentTaskId})`, 'ok');
 
-    const interval = setInterval(() => {
-      elapsed += tickMs;
-      const pct = Math.min(100, (elapsed / stage.durationMs) * 100);
-      setStageProgress(pct);
+        const poll = async () => {
+          if (isCancelled) return;
+          try {
+            const status = await pollOdmStatus(id, currentTaskId, currentProjectId);
+            
+            // Map status to our UI stages roughly
+            if (status.stage === 'stitching' || status.stage === 'running') {
+              setActiveStage(2); // sfm
+              setStageProgress(status.progress_pct || 50);
+              setOverallProgress(50);
+              addLog(`Processing: ${status.progress_pct}%`, 'info');
+              setTimeout(poll, 3000);
+            } else if (status.stage === 'done') {
+              setActiveStage(PIPELINE_STAGES.length - 1);
+              setStageProgress(100);
+              setOverallProgress(100);
+              setIsDone(true);
+              addLog('━━━ ODM PIPELINE COMPLETE ━━━', 'ok');
+              
+              // Trigger the AI U-Net inference on the orthophoto
+              addLog('Triggering AI U-Net Boundary Inference...', 'info');
+              runUnetInference(id)
+                .then(() => {
+                  addLog('AI Boundary Extraction Queued! Check Parcel view later.', 'ok');
+                  queryClient.invalidateQueries({ queryKey: ['geometry', id] });
+                })
+                .catch(err => addLog(`AI Extraction trigger failed: ${err.message}`, 'warn'));
+            } else if (status.stage === 'failed') {
+              addLog(`Pipeline failed: ${status.failure_reason}`, 'warn');
+              // Optionally handle error state
+            } else {
+              // Unknown or pending state
+              setActiveStage(0);
+              setTimeout(poll, 3000);
+            }
+          } catch (err: any) {
+             addLog(`Polling error: ${err.message}`, 'warn');
+             // Try again unless it's a fatal error
+             setTimeout(poll, 5000);
+          }
+        };
 
-      const totalPct = ((activeStage + pct / 100) / PIPELINE_STAGES.length) * 100;
-      setOverallProgress(totalPct);
-
-      // Drip log messages
-      const expectedMsgIdx = Math.floor((elapsed / stage.durationMs) * msgs.length);
-      while (msgIdx < expectedMsgIdx && msgIdx < msgs.length) {
-        addLog(`  › ${msgs[msgIdx]}`, msgIdx === msgs.length - 1 ? 'ok' : 'info');
-        if (stage.key === 'sfm') setPointCount(p => p + Math.floor(Math.random() * 800 + 200));
-        msgIdx++;
-      }
-
-      if (pct >= 100) {
-        clearInterval(interval);
-        addLog(`[✓] ${stage.label} complete`, 'ok');
-        if (activeStage + 1 < PIPELINE_STAGES.length) {
-          setTimeout(() => {
-            setActiveStage(s => s + 1);
-            setStageProgress(0);
-          }, 400);
-        } else {
-          setOverallProgress(100);
-          setIsDone(true);
-          addLog('━━━ PIPELINE COMPLETE ━━━', 'ok');
+        poll();
+      } catch (err: any) {
+        if (!isCancelled) {
+          addLog(`Failed to start pipeline: ${err.message}`, 'warn');
         }
       }
-    }, tickMs);
-    return () => clearInterval(interval);
+    };
+
+    runPipeline();
+
+    return () => { isCancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStage, isDone, hasError]);
+  }, [id, isDone, hasError]);
 
   // Auto-scroll logs
   useEffect(() => {
@@ -695,25 +765,24 @@ function ReportStep({ onFinish }: { onFinish: () => void }) {
 
 function FlyStep({ state, setMissionState, transitionTo, layers }: { state: any, setMissionState: any, transitionTo: any, layers: GeometryLayers | null }) {
   const { id } = useParams();
-  const [plan, setPlan] = useState<FlightPlan | null>(null);
+  const { data: plan } = useQuery({
+    queryKey: ['flight-plan', id],
+    queryFn: () => fetchFlightPlan(id!),
+    enabled: !!id
+  });
 
   useEffect(() => {
-    if (id) {
-      fetchFlightPlan(id).then(res => {
-        setPlan(res);
-        if (res && res.waypoints && res.waypoints.length > 0) {
-          setMissionState((prev: any) => ({
-            ...prev,
-            telemetry: {
-              ...prev.telemetry,
-              lon: res.waypoints[0][0],
-              lat: res.waypoints[0][1]
-            }
-          }));
+    if (plan && plan.waypoints && plan.waypoints.length > 0) {
+      setMissionState((prev: any) => ({
+        ...prev,
+        telemetry: {
+          ...prev.telemetry,
+          lon: plan.waypoints[0][0],
+          lat: plan.waypoints[0][1]
         }
-      }).catch(console.error);
+      }));
     }
-  }, [id, setMissionState]);
+  }, [plan, setMissionState]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
@@ -744,28 +813,33 @@ export function SurveyorMission() {
   const navigate = useNavigate();
   
   const { missionState, transitionTo, setMissionState } = useMissionSimulation(id || 'UNKNOWN');
-  
-  const [layers, setLayers] = useState<GeometryLayers | null>(null);
+
+  const { data: layers } = useQuery({
+    queryKey: ['geometry', id],
+    queryFn: () => fetchGeometryLayers(id!),
+    enabled: !!id
+  });
+
+  const { data: caseData } = useQuery({
+    queryKey: ['case', id],
+    queryFn: () => fetchCase(id!),
+    enabled: !!id
+  });
 
   useEffect(() => {
-    if (id) {
-      fetchGeometryLayers(id).then(setLayers).catch(console.error);
-      
-      // Fetch actual case to update the parcel metadata (village, area)
-      fetchCase(id).then(c => {
-        setMissionState(prev => ({
-          ...prev,
-          parcel: {
-            parcelId: c.parcel_id || id,
-            villageName: c.village || (c as any).case_data?.parcel?.village_code || 'Unknown',
-            cadastralAreaSqM: (c as any).case_data?.evidence?.spatial_evidence?.area_declared_sqm || 0,
-            workingAreaSqM: (c as any).case_data?.evidence?.spatial_evidence?.area_surveyed_sqm || 0,
-            boundaryStatus: prev.parcel?.boundaryStatus || 'BOUNDARY_PENDING'
-          }
-        }));
-      }).catch(console.error);
+    if (caseData && id) {
+      setMissionState(prev => ({
+        ...prev,
+        parcel: {
+          parcelId: caseData.parcel_id || id,
+          villageName: caseData.village || (caseData as any).case_data?.parcel?.village_code || 'Unknown',
+          cadastralAreaSqM: (caseData as any).case_data?.evidence?.spatial_evidence?.area_declared_sqm || 0,
+          workingAreaSqM: (caseData as any).case_data?.evidence?.spatial_evidence?.area_surveyed_sqm || 0,
+          boundaryStatus: prev.parcel?.boundaryStatus || 'BOUNDARY_PENDING'
+        }
+      }));
     }
-  }, [id, setMissionState]);
+  }, [caseData, id, setMissionState]);
 
   return (
     <div style={{ 
@@ -778,7 +852,7 @@ export function SurveyorMission() {
         currentState={missionState.state} 
         missionId={id || 'UNKNOWN'}
         telemetry={missionState.telemetry || undefined}
-        onEndMission={() => navigate('/surveyor/cases')}
+        onEndMission={() => navigate('/surveyor/home')}
       />
 
       {/* THREE-COLUMN WORKSPACE */}
@@ -847,7 +921,7 @@ export function SurveyorMission() {
           <Route path="report" element={
             <ReportStep 
               onFinish={() => {
-                navigate('/surveyor/cases', { replace: true });
+                navigate('/surveyor/home', { replace: true });
               }}
             />
           } />

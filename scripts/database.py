@@ -1,6 +1,6 @@
 """
 DB connection. Set DATABASE_URL env var, e.g.:
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/terratrace"
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/iknos"
 
 Requires PostGIS extension enabled on the target database:
     CREATE EXTENSION IF NOT EXISTS postgis;
@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/terratrace"
+    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/iknos"
 )
 
 engine = create_engine(DATABASE_URL, echo=False, future=True)

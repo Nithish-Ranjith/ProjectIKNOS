@@ -1,0 +1,284 @@
+.container {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.loadingState {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.topbar {
+  height: 44px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 300;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.18s;
+}
+
+.backBtn:hover {
+  color: var(--text-1);
+}
+
+.dividerVertical {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+}
+
+.breadcrumbId {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.breadcrumbLoc {
+  color: var(--text-2);
+  font-size: 0.8rem;
+}
+
+.badgeBlue {
+  font-size: 0.58rem;
+  padding: 2px 6px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mainArea {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.mapArea {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.statsBanner {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 20px;
+  display: flex;
+  gap: 28px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-2);
+  z-index: 200;
+  box-shadow: var(--shadow-panel);
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statValue {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.statWarning {
+  color: var(--amber);
+}
+
+.statGood {
+  color: var(--green);
+}
+
+.mapLegend {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 100;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+}
+
+.legendLineCadastral {
+  width: 20px;
+  border-bottom: 2px dashed var(--accent);
+}
+
+.legendLineAI {
+  width: 20px;
+  border-bottom: 2px dashed var(--amber);
+}
+
+.legendLineEdit {
+  width: 20px;
+  border-bottom: 2px solid var(--text-2);
+}
+
+.rightPanel {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--bg-raised);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.tabStrip {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panelTab {
+  flex: 1;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-2);
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.18s;
+  margin-bottom: -1px;
+}
+
+.panelTabActive {
+  border-bottom-color: var(--accent);
+  color: var(--text-1);
+}
+
+.panelContent {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panelLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+}
+
+.detailFieldLabel {
+  font-size: 0.62rem;
+  color: var(--text-2);
+  margin-bottom: 3px;
+  letter-spacing: 0.06em;
+}
+
+.detailFieldValue {
+  font-size: 0.82rem;
+  color: var(--text-1);
+  font-weight: 500;
+}
+
+.detailFieldValueMono {
+  font-family: var(--font-mono);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0 -18px;
+}
+
+.mutationStatusPending {
+  color: var(--amber);
+}
+
+.mutationStatusGood {
+  color: var(--green);
+}
+
+.neighborItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.neighborItem:hover {
+  border-color: var(--accent);
+}

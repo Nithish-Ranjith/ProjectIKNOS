@@ -1,0 +1,241 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auditSuccess {
+  background: var(--green-dim);
+  color: var(--green);
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auditFail {
+  background: var(--red-dim);
+  color: var(--red);
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logEntry {
+  border-left: 2px solid var(--border);
+  padding: 0.5rem 0 0.5rem 1rem;
+  background: var(--panel);
+  border-radius: 0 4px 4px 0;
+}
+
+.logHeader {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+  color: var(--text-1);
+}
+
+.logActor {
+  font-weight: normal;
+  color: var(--text-2);
+  font-size: 0.8rem;
+}
+
+.logHash {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+.tabsContainer {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+
+.tab {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.85rem;
+  background: none;
+  transition: all 0.15s;
+  border-bottom: 3px solid transparent;
+  color: var(--text-2);
+}
+
+.tabActive {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.rowLabel {
+  padding: 0.5rem 0;
+  color: var(--text-2);
+  font-size: 0.85rem;
+  width: 55%;
+}
+
+.rowValue {
+  padding: 0.5rem 0;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.rowValueMono {
+  font-family: var(--font-mono);
+}
+
+.accordionBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.9rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reasoningTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.reasoningTh {
+  background: var(--bg-raised);
+  text-align: left;
+  padding: 0.4rem 0.75rem;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.reasoningTr {
+  border-bottom: 1px solid var(--border);
+}
+
+.reasoningTd {
+  padding: 0.4rem 0.75rem;
+  color: var(--text-1);
+}
+
+.reasoningTdMono {
+  font-family: var(--font-mono);
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 2rem;
+  width: 100%;
+  maxWidth: 500px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  height: 64px;
+}
+
+.mainContent {
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 2rem;
+}
+
+.caseHeader {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.caseTitle {
+  margin-bottom: 0.25rem;
+  font-size: 1.5rem;
+  color: var(--text-1);
+}
+
+.caseMeta {
+  color: var(--text-2);
+  font-size: 0.9rem;
+}
+
+.badges {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0,1.4fr) minmax(0,1fr);
+  gap: 1.5rem;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.card {
+  background: var(--panel);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-panel);
+}
+
+.cardTitle {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  color: var(--text-1);
+}
+
+.decisionPanel {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--green-dim);
+  border-radius: 4px;
+  border-left: 3px solid var(--green);
+}

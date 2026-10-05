@@ -29,7 +29,35 @@ from . import models
 # Config
 # ---------------------------------------------------------------------------
 
-SECRET_KEY = os.environ.get("TERRATRACE_SECRET_KEY", "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR")
+SECRET_KEY = os.environ.get("IKNOS_SECRET_KEY", "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR")
+SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR")
+IKNOS_ENV = os.environ.get("IKNOS_ENV", "development").lower()
+IS_PRODUCTION = IKNOS_ENV == "production"
+_PLACEHOLDER_SECRET = "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR"
+# Demo header login is a development convenience. It is hard-disabled in production.
+IKNOS_DEMO = "0" if IS_PRODUCTION else os.environ.get("IKNOS_DEMO", "0")
+
+
+def assert_production_safe() -> None:
+    """Called at startup. Raises if a production deployment still has dev auth switches/secrets."""
+    if not IS_PRODUCTION:
+        return
+    problems = []
+    if os.environ.get("IKNOS_DEMO", "0") == "1":
+        problems.append("IKNOS_DEMO=1 must not be set in production")
+    if SECRET_KEY == _PLACEHOLDER_SECRET:
+        problems.append("IKNOS_SECRET_KEY is the placeholder value")
+    if SUPABASE_JWT_SECRET == _PLACEHOLDER_SECRET:
+        problems.append("SUPABASE_JWT_SECRET is the placeholder value")
+    if problems:
+        raise RuntimeError("Unsafe production configuration: " + "; ".join(problems))
+
+def dev_only() -> None:
+    """FastAPI dependency: endpoint exists only outside production (mock OTP, dummy-hash login)."""
+    if IS_PRODUCTION:
+        raise HTTPException(status_code=404, detail="Not found")
+
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("TOKEN_EXPIRE_MINUTES", "480"))  # 8h field sessions
 
@@ -92,25 +120,31 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> models.User:
     # 1. Handle Demo Header Login (Bypass JWT for hardcoded demo personas)
-    demo_email = request.headers.get("X-Demo-Email")
-    demo_role = request.headers.get("X-Demo-Role")
-    if demo_email:
-        role_map = {
-            "admin": "senior1",
-            "surveyor": "drone1",
-            "user": "customer1"
-        }
-        username = role_map.get(demo_role, "customer1")
-        user = db.query(models.User).filter(models.User.username == username).first()
-        if user:
-            return user
+    if IKNOS_DEMO == "1":
+        demo_email = request.headers.get("X-Demo-Email")
+        demo_role = request.headers.get("X-Demo-Role")
+        if demo_email:
+            role_map = {
+                "admin": "senior1",
+                "surveyor": "drone1",
+                "user": "customer1"
+            }
+            username = role_map.get(demo_role, "customer1")
+            user = db.query(models.User).filter(models.User.username == username).first()
+            if user:
+                return user
             
     # 2. Handle Supabase JWT Token
     if not credentials:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
-        # Disable signature verification for prototype to easily accept Supabase JWTs
-        payload = jwt.decode(credentials.credentials, options={"verify_signature": False})
+        # Verify Supabase JWT signature correctly using the secret
+        payload = jwt.decode(
+            credentials.credentials, 
+            SUPABASE_JWT_SECRET, 
+            algorithms=["HS256"], 
+            audience="authenticated"
+        )
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -120,7 +154,8 @@ def get_current_user(
     # Auto-create if signed up via Supabase just now
     if not user:
         email = payload.get("email", "unknown@example.com")
-        role_str = payload.get("user_metadata", {}).get("role", "user")
+        # Securely read role from app_metadata (admin assigned), not user_metadata
+        role_str = payload.get("app_metadata", {}).get("role", "user")
         
         db_role = models.UserRole.CUSTOMER
         if role_str == "admin":

@@ -8,7 +8,7 @@ export const SurveyorHome: React.FC = () => {
   return (
     <div className="app-container">
       <header className="topbar">
-        <h1>TerraTrace | Surveyor Dashboard</h1>
+        <h1>IKNOS | Surveyor Dashboard</h1>
         <button onClick={handleLogout} className="btn btn-outline" style={{ color: 'white', borderColor: 'white' }}>Logout</button>
       </header>
       <main className="main-content">

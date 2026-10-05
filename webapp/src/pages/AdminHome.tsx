@@ -1,106 +1,121 @@
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { fetchDashboardStats } from '../services/api'
-import type { DashboardStats } from '../types'
+import { AlertCircle, Clock, CheckCircle, BarChart3, ChevronRight, Activity, Map, FileText } from 'lucide-react'
+import styles from './AdminHome.module.css'
 
-const KPICard: React.FC<{ label: string; value: string | number; accent?: boolean }> = ({ label, value, accent }) => (
-  <div className="card" style={{
-    flex: '1 1 200px',
-    padding: '1.5rem',
-    borderLeft: accent ? '4px solid var(--color-terracotta)' : '4px solid var(--color-navy)',
-  }}>
-    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-    <div style={{ fontSize: '2.5rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: accent ? 'var(--color-terracotta)' : 'var(--color-navy)', marginTop: '0.5rem' }}>{value}</div>
+const KPICard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; alert?: boolean }> = ({ title, value, icon, alert }) => (
+  <div className={`${styles.kpiCard} ${alert ? styles.kpiCardAlert : ''}`}>
+    {alert && <div className={styles.kpiCardAlertTop} />}
+    <div className={styles.kpiHeader}>
+      <div className={styles.kpiTitle}>{title}</div>
+      <div className={`${styles.kpiIcon} ${alert ? styles.kpiIconAlert : ''}`}>{icon}</div>
+    </div>
+    <div className={`${styles.kpiValue} ${alert ? styles.kpiValueAlert : ''}`}>{value}</div>
   </div>
 )
 
 export const AdminHome: React.FC = () => {
   const navigate = useNavigate()
-  
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    setLoading(true)
-    fetchDashboardStats()
-      .then(setStats)
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const handleLogout = async () => { await supabase.auth.signOut(); navigate('/login'); }
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['admin-dashboard-stats'],
+    queryFn: fetchDashboardStats
+  })
 
   return (
-    <div className="app-container">
-      <header className="topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ cursor: 'pointer', fontFamily: 'var(--font-ui)', fontSize: '1.25rem', fontWeight: 700 }}
-            onClick={() => navigate('/admin/home')}>
-             TerraTrace
-          </span>
-          <span style={{ opacity: 0.5 }}>|</span>
-          <span style={{ opacity: 0.8 }}>Admin — Dashboard</span>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button onClick={() => navigate('/admin/cases')} className="btn btn-outline" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>Cases</button>
-          <button onClick={() => navigate('/admin/records')} className="btn btn-outline" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>Records</button>
-          <button onClick={() => navigate('/admin/users')} className="btn btn-outline" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>Users</button>
-          <button onClick={handleLogout} className="btn btn-outline" style={{ color: 'white', borderColor: 'white', fontSize: '0.85rem' }}>Logout</button>
-        </div>
-      </header>
-
-      <main className="main-content" style={{ maxWidth: '1200px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
+    <div className={styles.container}>
+      <main className={styles.mainContent}>
+        
+        {/* Header */}
+        <div className={styles.header}>
           <div>
-            <h2 style={{ fontSize: '1.8rem', marginBottom: '0.25rem' }}>Overview</h2>
-            <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>System health and adjudication metrics.</p>
+            <h1 className={styles.headerTitle}>Command Center</h1>
+            <p className={styles.headerSubtitle}>
+              Live adjudication metrics and system health monitoring.
+            </p>
           </div>
-          <button className="btn btn-primary" onClick={() => navigate('/admin/cases')}>Go to Case Queue →</button>
+          <button 
+            className={`btn btn-primary ${styles.btnPrimary}`} 
+            onClick={() => navigate('/admin/cases')}
+          >
+            Access Case Queue <ChevronRight size={16} />
+          </button>
         </div>
 
-        {error && <div className="error-msg"> {error}</div>}
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem' }}>
-            <span className="spinner" style={{ borderColor: 'var(--color-border)', borderTopColor: 'var(--color-navy)' }}></span> Loading metrics...
+        {isLoading ? (
+          <div className={styles.loadingState}>
+            <Activity className="spinner" size={24} style={{ marginBottom: '16px' }} />
+            <div>Initializing secure dashboard...</div>
           </div>
         ) : stats ? (
-          <>
-            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
-              <KPICard label="Open Cases" value={stats.open_cases} accent />
-              <KPICard label="SLA Breaches" value={stats.sla_breaches} accent={stats.sla_breaches > 0} />
-              <KPICard label="Avg Resolution (days)" value={stats.avg_resolution_days.toFixed(1)} />
-              <KPICard label="Cases This Week" value={stats.cases_this_week} />
+          <div className={styles.gridContent}>
+            
+            {/* KPI Grid */}
+            <div className={styles.kpiGrid}>
+              <KPICard title="Active Cases" value={stats.open_cases} icon={<FileText size={20} />} />
+              <KPICard title="SLA Breaches" value={stats.sla_breaches} icon={<AlertCircle size={20} />} alert={stats.sla_breaches > 0} />
+              <KPICard title="Avg Resolution" value={`${stats.avg_resolution_days.toFixed(1)}d`} icon={<Clock size={20} />} />
+              <KPICard title="Weekly Volume" value={stats.cases_this_week} icon={<BarChart3 size={20} />} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
-              {/* Alert Panel */}
-              <div className="card">
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}> Action Required</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ background: '#fff3e0', padding: '0.75rem 1rem', borderRadius: '4px', borderLeft: '4px solid var(--color-terracotta)', fontSize: '0.9rem' }}>
-                    <strong>3 Cases</strong> breached 14-day SLA. High priority review required.
-                  </div>
-                  <div style={{ background: '#e3f2fd', padding: '0.75rem 1rem', borderRadius: '4px', borderLeft: '4px solid #1565C0', fontSize: '0.9rem' }}>
-                    <strong>12 Surveyor Field Visits</strong> pending submission.
+            {/* Main Content Grid */}
+            <div className={styles.mainGrid}>
+              
+              {/* System Alerts */}
+              <div className={styles.cardPanel}>
+                <h3 className={styles.panelTitle}>
+                  <Activity size={18} color="var(--amber)" /> Priority Alerts
+                </h3>
+                
+                <div className={styles.alertList}>
+                  {stats.sla_breaches > 0 && (
+                    <div className={`${styles.alertItem} ${styles.alertDanger}`}>
+                      <AlertCircle size={20} color="var(--red)" style={{ flexShrink: 0 }} />
+                      <div>
+                        <div className={`${styles.alertTitle} ${styles.alertTitleDanger}`}>SLA Violation Detected</div>
+                        <div className={styles.alertText}>
+                          {stats.sla_breaches} cases have exceeded the mandatory 14-day adjudication SLA. Immediate intervention required by District Magistrate.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`${styles.alertItem} ${styles.alertInfo}`}>
+                    <Map size={20} color="var(--accent)" style={{ flexShrink: 0 }} />
+                    <div>
+                      <div className={`${styles.alertTitle} ${styles.alertTitleInfo}`}>Surveyor Field Sync</div>
+                      <div className={styles.alertText}>
+                        12 Drone Field Visits are currently cached offline and pending network sync to the master database.
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Quick Actions */}
-              <div className="card">
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>Quick Actions</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <button className="btn btn-outline" style={{ justifyContent: 'flex-start' }} onClick={() => navigate('/admin/cases')}> Review Open Cases</button>
-                  <button className="btn btn-outline" style={{ justifyContent: 'flex-start' }}> View Regional Map</button>
+              <div className={styles.cardPanel}>
+                <h3 className={styles.panelTitle}>Administrative Actions</h3>
+                <div className={styles.alertList}>
+                  <button className={`btn btn-outline ${styles.actionBtn}`} onClick={() => navigate('/admin/cases')}>
+                    <span className={styles.actionBtnText}><FileText size={18} /> Adjudicate Queue</span>
+                    <ChevronRight size={16} />
+                  </button>
+                  <button className={`btn btn-outline ${styles.actionBtn}`} onClick={() => navigate('/admin/settings')}>
+                    <span className={styles.actionBtnText}><CheckCircle size={18} /> ML Tolerance Settings</span>
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
               </div>
+
             </div>
-          </>
+          </div>
         ) : null}
       </main>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   )
 }

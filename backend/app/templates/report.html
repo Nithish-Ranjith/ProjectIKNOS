@@ -1,159 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Case Report: {{ case.case_id }}</title>
-    <style>
-        @page {
-            size: A4;
-            margin: 20mm;
-            @bottom-right {
-                content: "Page " counter(page) " of " counter(pages);
-                font-family: monospace;
-                font-size: 9px;
-            }
-            @bottom-left {
-                content: "Tamper-evident hash: {{ audit_hash }}";
-                font-family: monospace;
-                font-size: 9px;
-                color: #666;
-            }
-        }
-        body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            color: #111;
-            line-height: 1.5;
-            font-size: 11pt;
-            margin: 0;
-        }
-        h1, h2, h3, h4 { margin-top: 1em; margin-bottom: 0.5em; }
-        h1 { border-bottom: 2px solid #333; padding-bottom: 4px; font-size: 18pt; text-transform: uppercase; }
-        h2 { font-size: 14pt; color: #444; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
-        .grid { display: flex; flex-wrap: wrap; }
-        .col-half { width: 48%; margin-right: 2%; }
-        
-        .header-block {
-            display: flex; justify-content: space-between; align-items: flex-start;
-            margin-bottom: 30px;
-        }
-        .header-block .meta {
-            font-family: monospace; font-size: 10pt; background: #f0f0f0; padding: 10px; border-radius: 4px; border: 1px solid #ccc;
-        }
-        
-        .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .table th { background: #f9f9f9; font-weight: 600; }
-        
-        .map-comparison { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .map-box { width: 48%; }
-        .map-box img { width: 100%; border: 1px solid #aaa; border-radius: 4px; }
-        .map-box .label { font-size: 9pt; font-family: monospace; text-align: center; margin-top: 4px; font-weight: bold; }
-        
-        .timelapse-strip { display: flex; gap: 10px; margin-bottom: 20px; }
-        .timelapse-frame { flex: 1; border: 1px solid #aaa; border-radius: 4px; padding: 2px; }
-        .timelapse-frame img { width: 100%; display: block; }
-        .timelapse-frame .caption { font-size: 8pt; text-align: center; font-family: monospace; }
-        
-        .reasoning-box { background: #fdfbf7; border-left: 4px solid #b87a4d; padding: 12px; margin-bottom: 20px; }
-        .reasoning-box h3 { margin-top: 0; color: #b87a4d; font-size: 12pt; }
-        
-        .officer-block {
-            margin-top: 40px; border-top: 1px dashed #ccc; padding-top: 20px;
-        }
-        .officer-block p { margin: 5px 0; }
-        .signature-line { width: 250px; border-bottom: 1px solid #333; margin-top: 40px; display: inline-block; }
-    </style>
+<meta charset="UTF-8">
+<title>IKNOS Case Evidence Report: {{ case.case_id }}</title>
+<style>
+  @page { size: A4; margin: 18mm;
+    @bottom-left { content: "Audit chain tip: {{ (audit_tip or 'none')[:24] }}"; font-family: monospace; font-size: 8px; color:#64748b; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font-family: monospace; font-size: 8px; color:#64748b; } }
+  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color:#0f172a; font-size:10pt; line-height:1.45; }
+  h1 { font-size:17pt; margin:0 0 2px; } h2 { font-size:12pt; border-bottom:1px solid #cbd5e1; padding-bottom:3px; margin:18px 0 8px; }
+  .sub { color:#475569; font-size:9pt; }
+  .banner { padding:8px 10px; border-left:4px solid #b45309; background:#fffbeb; margin:10px 0; font-size:9pt; }
+  .banner.sim { border-color:#7c3aed; background:#f5f3ff; }
+  .cards { display:flex; gap:8px; margin:8px 0; } .card { flex:1; border:1px solid #cbd5e1; border-radius:4px; padding:8px; }
+  .card .v { font-size:15pt; font-weight:700; } .card .l { font-size:8pt; color:#475569; text-transform:uppercase; letter-spacing:.04em; }
+  table { width:100%; border-collapse:collapse; font-size:9pt; } th,td { border:1px solid #e2e8f0; padding:5px 7px; text-align:left; vertical-align:top; } th { background:#f1f5f9; }
+  .mono { font-family: monospace; font-size:8pt; word-break:break-all; }
+  .legend span { display:inline-block; margin-right:14px; font-size:8.5pt; } .sw { display:inline-block; width:14px; height:3px; vertical-align:middle; margin-right:4px; }
+  .muted { color:#64748b; }
+</style>
 </head>
 <body>
+<h1>IKNOS Case Evidence Report</h1>
+<div class="sub">Case {{ case.case_id }} &middot; Parcel {{ parcel.parcel_id }}{% if parcel.ulpin %} &middot; ULPIN {{ parcel.ulpin }}{% endif %}
+ &middot; Status: {{ case.status.value }} &middot; Opened {{ case.created_at.strftime('%Y-%m-%d') }}</div>
 
-    <div class="header-block">
-        <div>
-            <h1>TerraTrace Intelligence Report</h1>
-            <p><strong>Parcel ID:</strong> {{ parcel.parcel_id }}</p>
-            <p><strong>Village:</strong> {{ parcel.village | default("Unknown") }}</p>
-        </div>
-        <div class="meta">
-            Case ID: {{ case.case_id }}<br>
-            Date Triggered: {{ case.created_at.strftime('%Y-%m-%d') }}<br>
-            Trigger Source: {{ case.trigger_source | default("Automated Monitoring") }}<br>
-            Status: {{ case.status.value }}
-        </div>
-    </div>
+<h2>1. Executive finding</h2>
+{% if metrics %}
+<p>The evidence indicates a discrepancy between the recorded cadastral boundary and the observed candidate boundary that
+<strong>requires field verification</strong>. This report presents evidence only; it is not a legal determination of ownership or boundary.</p>
+{% else %}
+<p>No computed boundary comparison exists for this case yet. This report contains only record and workflow information.</p>
+{% endif %}
+{% if candidate and candidate.provenance == 'SIMULATED_PRECOMPUTED' %}
+<div class="banner sim"><strong>SIMULATED CANDIDATE.</strong> The observed boundary below is a precomputed simulation artifact
+(generated offline from a documented transform of the cadastral polygon). It is <strong>not</strong> output of the U-Net model and has no model confidence.</div>
+{% elif candidate and candidate.low_confidence %}
+<div class="banner"><strong>LOW-CONFIDENCE MODEL OUTPUT.</strong> Mean foreground probability {{ '%.2f' % candidate.confidence }} is below the usable threshold; treat as unverified.</div>
+{% endif %}
 
-    <h2>1. Evidence Summary</h2>
-    <table class="table">
-        <tr>
-            <th>Metric</th>
-            <th>Value</th>
-            <th>Threshold Assessment</th>
-        </tr>
-        <tr>
-            <td>Spatial Mismatch (Cadastral vs Drone)</td>
-            <td>{{ data.spatial_mismatch_pct | round(1) }}%</td>
-            <td>{% if data.spatial_mismatch_pct > 15 %}<span style="color:red">Exceeds 15% allowance</span>{% else %}<span style="color:green">Within bounds</span>{% endif %}</td>
-        </tr>
-        <tr>
-            <td>Boundary Shift</td>
-            <td>{{ data.boundary_shift_m | round(1) }} m</td>
-            <td>{% if data.boundary_shift_m > 2.0 %}<span style="color:red">Severe Encroachment</span>{% else %}<span style="color:green">Nominal</span>{% endif %}</td>
-        </tr>
-        <tr>
-            <td>NDVI Instability (5yr)</td>
-            <td>{{ data.instability_score | round(2) }} (Score 0-1)</td>
-            <td>{% if data.instability_score > 0.4 %}<span style="color:red">High variance (Clearance)</span>{% else %}Stable{% endif %}</td>
-        </tr>
-    </table>
+<h2>2. Key metrics (computed from geometry)</h2>
+{% if metrics %}
+<div class="cards">
+  <div class="card"><div class="v">{{ '%.1f' % metrics.area_diff_pct }}%</div><div class="l">Area difference</div></div>
+  <div class="card"><div class="v">{{ '%.1f' % metrics.boundary_shift_m }} m</div><div class="l">Boundary shift (Hausdorff)</div></div>
+  <div class="card"><div class="v">{{ '%.3f' % metrics.iou }}</div><div class="l">IoU</div></div>
+  <div class="card"><div class="v">{{ metrics.topology_valid and 'Valid' or 'INVALID' }}</div><div class="l">Topology</div></div>
+</div>
+<table>
+  <tr><th>Recorded (cadastral) area</th><td>{{ '%.1f' % metrics.cadastral_area_m2 }} m²</td>
+      <th>Observed (candidate) area</th><td>{{ '%.1f' % metrics.candidate_area_m2 }} m²</td></tr>
+  <tr><th>Overlap area</th><td>{{ '%.1f' % metrics.intersection_m2 }} m²</td>
+      <th>Candidate outside cadastral</th><td>{{ '%.1f' % metrics.difference_m2 }} m²</td></tr>
+  <tr><th>Method</th><td colspan="3">PostGIS ST_Intersection / ST_Difference / ST_HausdorffDistance in EPSG:{{ metrics.utm_srid }};
+     positioning quality {{ metrics.positioning_quality }}; computed {{ metrics.computed_at }}; metrics id <span class="mono">{{ metrics.metrics_id }}</span></td></tr>
+</table>
+{% else %}<p class="muted">Not available: no candidate boundary has been compared for this case.</p>{% endif %}
 
-    <h2>2. Boundary Comparison</h2>
-    <div class="map-comparison">
-        <div class="map-box">
-            <!-- Simulated static map render via Google Static Maps or Mapbox Static -->
-            <img src="{{ static_map_cadastral }}" alt="Cadastral Baseline">
-            <div class="label">LEGAL CADASTRAL BASELINE</div>
-        </div>
-        <div class="map-box">
-            <img src="{{ static_map_drone }}" alt="Drone Observation">
-            <div class="label">DRONE CAPTURE EXTENT (AI EXTRACTED)</div>
-        </div>
-    </div>
+<h2>3. Boundary comparison</h2>
+{% if comparison_svg %}
+{{ comparison_svg | safe }}
+<div class="legend"><span><i class="sw" style="background:#b45309"></i>Recorded cadastral boundary</span>
+{% if candidate %}<span><i class="sw" style="background:#0e7490"></i>Observed candidate ({{ 'simulated precomputed' if candidate.provenance == 'SIMULATED_PRECOMPUTED' else 'U-Net ' ~ (candidate.model_version or '') }})</span>{% endif %}</div>
+{% else %}<p class="muted">Not available: parcel has no stored geometry.</p>{% endif %}
 
-    <h2>3. Temporal AI (Sentinel-2)</h2>
-    <p>Historical optical backscatter indicates timeline of clearance activity.</p>
-    <div class="timelapse-strip">
-        {% for frame in timelapse_frames %}
-        <div class="timelapse-frame">
-            <img src="{{ frame.url }}" alt="{{ frame.date }}">
-            <div class="caption">{{ frame.date }}</div>
-        </div>
-        {% endfor %}
-    </div>
+<h2>4. Temporal signal</h2>
+{% if temporal and temporal.get('instability_score') is not none %}
+<table><tr><th>Instability score</th><td>{{ temporal.instability_score }}</td><th>Onset year</th><td>{{ temporal.get('onset_year', 'n/a') }}</td></tr>
+<tr><th>Data source</th><td colspan="3">{{ temporal_source }}{% if temporal_source == 'SEEDED_SYNTHETIC' %} (seed data — not a Sentinel-2 measurement){% endif %}</td></tr></table>
+<p class="sub">A temporal anomaly is a candidate signal that prioritises verification. It is not evidence of any specific act.</p>
+{% else %}<p class="muted">Not available: no temporal analysis for this parcel.</p>{% endif %}
 
-    <h2>4. Pattern Library Inference</h2>
-    <div class="reasoning-box">
-        <h3>Primary Match: Encroachment via Vegetation Clearance</h3>
-        <p><strong>Confidence: {{ (data.confidence_score * 100) | round(1) }}%</strong></p>
-        <p>
-            The combination of a {{ data.spatial_mismatch_pct | round(1) }}% spatial area expansion along the Northern boundary, coupled with a highly volatile NDVI score ({{ data.instability_score | round(2) }}) between Q3 2021 and Q1 2022, fits the signature profile of physical forest clearance preceding boundary expansion.
-        </p>
-        <p>
-            <i>Rule triggered: <code>SPATIAL_SHIFT_GT_10 AND TEMPORAL_DROP_GT_0.4</code></i>
-        </p>
-    </div>
+<h2>5. Record reconciliation</h2>
+<table>
+<tr><th>Source</th><th>Status</th><th>Detail</th></tr>
+<tr><td>RoR</td><td>{{ ror.status if ror else 'not checked' }}</td><td>{% if ror %}Recorded area {{ ror.area_recorded }} m²; khasra {{ ror.khasra_no }}{% endif %}</td></tr>
+<tr><td>Mutation</td><td>{{ mutation.mutation_status if mutation else 'not checked' }}</td><td></td></tr>
+<tr><td>Registration</td><td>{{ registration.status if registration else 'not checked' }}</td><td>{% if registration and registration.deed_ref %}Deed {{ registration.deed_ref }}{% endif %}</td></tr>
+<tr><td>Cadastral</td><td>{{ 'present' if comparison_svg else 'missing' }}</td><td>Stored area {{ parcel.area_sqm }} m²</td></tr>
+</table>
 
-    <div class="officer-block">
-        <h2>5. Officer Verification</h2>
-        <p><strong>Decision:</strong> __________________________________________________</p>
-        <p><strong>Reasoning:</strong> __________________________________________________</p>
-        <br>
-        <div>
-            <span class="signature-line"></span><br>
-            <small>Authorised Signature</small>
-        </div>
-        <div style="float: right; margin-top: -55px;">
-            <span class="signature-line" style="width: 150px;"></span><br>
-            <small>Date</small>
-        </div>
-    </div>
+<h2>6. Reasoning trace (rules triggered)</h2>
+<p class="sub">Case priority score {{ case.confidence_score }} / 100 &mdash; deterministic weighted rules; configuration in weights.json.</p>
+<table><tr><th>Rule</th><th>Result</th><th>Detail</th></tr>
+{% for r in reasoning_trace %}<tr><td>{{ r.rule }}</td><td>{{ r.result }}</td><td>{{ r.detail or '' }}</td></tr>{% else %}
+<tr><td colspan="3" class="muted">No reasoning trace recorded.</td></tr>{% endfor %}</table>
 
+<h2>7. Field verification</h2>
+{% for v in verifications %}
+<table><tr><th>Status</th><td>{{ v.verification_status.value }}</td><th>Recorded</th><td>{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+<tr><th>Photos</th><td>{{ (v.photo_refs or [])|length }}</td><th>Location</th><td>{% if v.location_lat is not none %}{{ '%.6f' % v.location_lat }}, {{ '%.6f' % v.location_lon }}{% else %}n/a{% endif %}</td></tr>
+<tr><th>Summary</th><td colspan="3">{{ v.findings_summary or '—' }}</td></tr></table>
+{% else %}<p class="muted">No field verification recorded.</p>{% endfor %}
+
+<h2>8. Officer decision and record updates</h2>
+{% for a in approvals %}<p>Approval <span class="mono">{{ a.approval_id }}</span> &middot; {{ a.update_class.value }} &middot; by {{ a.approved_by }} (tier {{ a.approver_tier }}) at {{ a.approved_at.strftime('%Y-%m-%d %H:%M') }}{% if a.reason %} &mdash; {{ a.reason }}{% endif %}</p>
+{% else %}<p class="muted">No authenticated approval recorded. No land record has been changed.</p>{% endfor %}
+{% for u in record_updates %}<p>Record update <span class="mono">{{ u.update_id }}</span> &middot; {{ u.update_class.value }} &middot; {{ u.target_record_type }}/{{ u.target_record_id }} at {{ u.applied_at.strftime('%Y-%m-%d %H:%M') }}</p>{% endfor %}
+
+<h2>9. Audit trail</h2>
+<table><tr><th>#</th><th>Event</th><th>Actor</th><th>Time (UTC)</th><th>Hash</th></tr>
+{% for e in audit_rows %}<tr><td>{{ e.seq }}</td><td>{{ e.event_type }}</td><td>{{ e.actor_role or '' }}</td><td>{{ e.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td><td class="mono">{{ e.current_hash[:16] }}…</td></tr>
+{% else %}<tr><td colspan="5" class="muted">No audit events.</td></tr>{% endfor %}</table>
+<p class="sub">Hash-chained, tamper-evident log ({{ audit_count }} events). Chain tip: <span class="mono">{{ audit_tip or 'none' }}</span></p>
 </body>
 </html>

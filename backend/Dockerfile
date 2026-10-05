@@ -1,30 +1,24 @@
-FROM python:3.11-slim
+FROM python:3.10-slim
+
+# Install system GIS and OpenCV dependencies
+RUN apt-get update && apt-get install -y \
+    gdal-bin libgdal-dev g++ \
+    libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up GDAL env vars
+ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
+ENV C_INCLUDE_PATH=/usr/include/gdal
 
 WORKDIR /app
 
-# Install system dependencies required for WeasyPrint and PostGIS/OpenCV
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libharfbuzz0b \
-    libpango-1.0-0 \
-    libglib2.0-0 \
-    libgdk-pixbuf2.0-0 \
-    shared-mime-info \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
+# Install Python requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the backend code
-COPY . .
+# Copy application code
+COPY app/ app/
 
-# Expose port 8000
-EXPOSE 8000
+# Note: The ML models should be mounted into /app/models or copied here if deploying directly.
 
-# Start FastAPI using uvicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

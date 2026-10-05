@@ -168,7 +168,7 @@ fun takePhoto(
     executor: java.util.concurrent.Executor,
     onPhotoCaptured: (File) -> Unit
 ) {
-    val photoDir = File(context.cacheDir, "terratrace_photos").also { it.mkdirs() }
+    val photoDir = File(context.cacheDir, "iknos_photos").also { it.mkdirs() }
     val name = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
     val photoFile = File(photoDir, "IMG_${'$'}name.jpg")
     val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
@@ -197,7 +197,7 @@ fun CameraPermissionDeniedUI(onRequestAgain: () -> Unit) {
             Icon(Icons.Default.NoPhotography, null, tint = Color(0xFFEF4444), modifier = Modifier.size(64.dp))
             Text("Camera Permission Required", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Text(
-                "TerraTrace needs camera access to capture field evidence and drone imagery.\n\nPlease grant the permission to continue.",
+                "IKNOS needs camera access to capture field evidence and drone imagery.\n\nPlease grant the permission to continue.",
                 color = Color(0xFF94A3B8), fontSize = 14.sp, textAlign = TextAlign.Center
             )
             Button(

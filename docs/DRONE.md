@@ -46,7 +46,7 @@ grid_spacing = footprint_width * (1 - side_overlap_pct / 100)
 ## Environment Variables
 | Variable | Default | Description |
 |---|---|---|
-| `CAPTURE_DIR` | `/tmp/terratrace_captures` | Where images are stored |
+| `CAPTURE_DIR` | `/tmp/iknos_captures` | Where images are stored |
 | `DISTANCE_INTERVAL_M` | `10.0` | Option D trigger distance |
 | `BLUR_THRESHOLD` | `100.0` | Laplacian variance below this → BLUR |
 

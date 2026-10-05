@@ -19,7 +19,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "terratrace_local_db"
+                    "iknos_local_db"
                 ).build()
                 INSTANCE = instance
                 instance

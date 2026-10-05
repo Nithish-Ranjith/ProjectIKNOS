@@ -13,10 +13,12 @@ import { SurveyorMission }    from './pages/surveyor/SurveyorMission'
 import { SurveyorHistory }    from './pages/surveyor/SurveyorHistory'
 import { SurveyorProfile }    from './pages/surveyor/SurveyorProfile'
 import { AppShell }           from './components/layout/AppShell'
+import { AdminShell }         from './components/layout/AdminShell'
 import { AdminHome }          from './pages/AdminHome'
-
 import { AdminCases }      from './pages/admin/AdminCases'
 import { AdminCaseDetail } from './pages/admin/AdminCaseDetail'
+import { AdminSettings }   from './pages/admin/AdminSettings'
+import { BrowseMap }       from './pages/BrowseMap'
 import ErrorBoundary from './ErrorBoundary'
 
 function App() {
@@ -52,15 +54,17 @@ function App() {
           <Route path="/surveyor/cases" element={<Navigate to="/surveyor/home" replace />} />
         </Route>
 
-        {/* ADMIN / OFFICER role — Architecture §4 */}
+        {/* ADMIN / OFFICER role — Architecture §4 — now uses AdminShell sidebar */}
         <Route element={<AuthRoute allowedRoles={['admin']} />}>
-          <Route path="/admin/home"         element={<AdminHome />} />
-          <Route path="/admin/cases"        element={<AdminCases />} />
-          <Route path="/admin/cases/:id"    element={<AdminCaseDetail />} />
-          {/* Stub routes — to be filled in subsequent build steps */}
-          <Route path="/admin/records"  element={<AdminHome />} />
-          <Route path="/admin/users"    element={<AdminHome />} />
-          <Route path="/admin/settings" element={<AdminHome />} />
+          <Route element={<AdminShell />}>
+            <Route path="/admin/home"         element={<AdminHome />} />
+            <Route path="/admin/cases"        element={<AdminCases />} />
+            <Route path="/admin/cases/:id"    element={<AdminCaseDetail />} />
+            <Route path="/admin/map"          element={<BrowseMap />} />
+            <Route path="/admin/records"  element={<div style={{padding:'3rem',textAlign:'center',opacity:.5}}>Records module — coming soon</div>} />
+            <Route path="/admin/users"    element={<div style={{padding:'3rem',textAlign:'center',opacity:.5}}>User management — coming soon</div>} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
+          </Route>
         </Route>
 
         {/* Root redirects */}

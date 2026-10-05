@@ -25,7 +25,7 @@ def seed_real_db():
     db.add_all(users)
     db.commit()
 
-    dataset_dir = "/Users/nithishranjith/AndroidStudioProjects/ProjectIKNOS/data_extracted/terratrace_dataset_1000 2/output_real"
+    dataset_dir = "/Users/nithishranjith/AndroidStudioProjects/ProjectIKNOS/data_extracted/iknos_dataset_1000 2/output_real"
 
     print("Loading cases.jsonl (limited to 500 for speed)...")
     cases = []

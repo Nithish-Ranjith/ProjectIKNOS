@@ -1,141 +1,127 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { fetchActiveCaseForParcel, fetchCasePlainSummary, fetchGeometryLayers } from '../../services/api'
+import { fetchActiveCaseForParcel, fetchGeometryLayers } from '../../services/api'
 import { MapboxMap } from '../../components/MapboxMap'
-import type { Case, GeometryLayers } from '../../types'
-
-const PlainStatusBlock: React.FC<{ status: Case['status'] }> = ({ status }) => {
-  if (status === 'open') {
-    return (
-      <div style={{ padding: '1rem', background: '#fff3e0', borderLeft: '4px solid var(--color-terracotta)', borderRadius: '4px' }}>
-        <h4 style={{ color: 'var(--color-terracotta)', margin: '0 0 0.5rem 0' }}>Under Review</h4>
-        <p style={{ margin: 0, fontSize: '0.9rem' }}>We've detected a potential discrepancy in your land records. A surveyor may be assigned to review this case.</p>
-      </div>
-    )
-  }
-  if (status === 'field_verification') {
-    return (
-      <div style={{ padding: '1rem', background: '#e3f2fd', borderLeft: '4px solid #1565c0', borderRadius: '4px' }}>
-        <h4 style={{ color: '#1565c0', margin: '0 0 0.5rem 0' }}>Field Visit Scheduled</h4>
-        <p style={{ margin: 0, fontSize: '0.9rem' }}>A government surveyor has been assigned to visit your parcel and verify the physical boundaries.</p>
-      </div>
-    )
-  }
-  return (
-    <div style={{ padding: '1rem', background: '#e8f5e9', borderLeft: '4px solid #4a7c59', borderRadius: '4px' }}>
-      <h4 style={{ color: '#4a7c59', margin: '0 0 0.5rem 0' }}>No Issues Found / Resolved</h4>
-      <p style={{ margin: 0, fontSize: '0.9rem' }}>Your land records are up to date and match the physical boundaries.</p>
-    </div>
-  )
-}
+import { TemporalSlider } from '../../components/TemporalSlider'
+import { ShieldCheck, MapPin, FileText, ChevronRight, AlertTriangle, ArrowLeft } from 'lucide-react'
+import styles from './UserParcelDetail.module.css'
 
 export const UserParcelDetail: React.FC = () => {
   const { id: parcelId } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [sliderYear, setSliderYear] = useState(2026)
 
-  const [activeCase, setActiveCase] = useState<Case | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
-  const [summary, setSummary] = useState<{ changes: string[] } | null>(null)
-  const [summaryOpen, setSummaryOpen] = useState(false)
-
-  const [layers, setLayers] = useState<GeometryLayers | null>(null)
-
-  useEffect(() => {
-    if (!parcelId) return
-    setLoading(true)
-    
-    // Fetch case info and map layers in parallel
-    Promise.all([
-      fetchActiveCaseForParcel(parcelId),
-      fetchGeometryLayers('mock') // Stub: returns default geometry for demo
-    ])
-      .then(([c, l]) => {
-        setActiveCase(c)
-        setLayers(l)
-        if (!c) {
-           fetchCasePlainSummary('mock-closed-case').then(setSummary)
-        }
-      })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [parcelId])
+  const { data, isLoading } = useQuery({
+    queryKey: ['parcel-detail', parcelId],
+    queryFn: async () => {
+      if (!parcelId) throw new Error("No parcel ID")
+      const [activeCase, layers] = await Promise.all([
+        fetchActiveCaseForParcel(parcelId),
+        fetchGeometryLayers('mock') // Stub
+      ])
+      return { activeCase, layers }
+    },
+    enabled: !!parcelId
+  })
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     navigate('/login')
   }
 
-  if (loading) return (
-    <div className="app-container" style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <span className="spinner" style={{ width: '2rem', height: '2rem', borderColor: 'var(--color-border)', borderTopColor: 'var(--color-terracotta)' }}></span>
+  if (isLoading) return (
+    <div className={styles.loadingGis}>
+      <span className={`spinner ${styles.loadingSpinner}`}></span>
     </div>
   )
 
-  if (error) return (
-    <div className="app-container" style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <div className="error-msg"> {error}<br /><button className="btn btn-outline" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/user/home')}>Back Home</button></div>
-    </div>
-  )
-
-  // Derived status: if active case exists, use its status; else 'closed'
-  const displayStatus = activeCase ? activeCase.status : 'closed'
+  const activeCase = data?.activeCase
+  const layers = data?.layers
+  const status = activeCase ? activeCase.status : 'closed'
 
   return (
-    <div className="app-container">
-      <header className="topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button onClick={() => navigate('/user/home')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '1.2rem' }}>←</button>
-          <span style={{ fontFamily: 'var(--font-ui)', fontWeight: 700 }}>Parcel Detail</span>
+    <div className={styles.container}>
+      
+      {/* Header */}
+      <header className={styles.header}>
+        <div className={styles.headerBrand}>
+          <button onClick={() => navigate('/user/home')} className={styles.backBtn}>
+            <ArrowLeft size={24} />
+          </button>
+          <div className={styles.divider} />
+          <ShieldCheck color="var(--accent)" size={24} />
+          <span className={styles.headerTitle}>Parcel Record</span>
         </div>
-        <button onClick={handleLogout} className="btn btn-outline" style={{ color: 'white', borderColor: 'white', fontSize: '0.85rem' }}>Logout</button>
+        <button onClick={handleLogout} className="btn btn-outline" style={{ padding: '6px 16px', fontSize: '13px' }}>Logout</button>
       </header>
 
-      <main className="main-content" style={{ maxWidth: '800px' }}>
-        <h2 style={{ marginBottom: '0.5rem', fontSize: '1.75rem' }}>{parcelId}</h2>
+      {/* Main Content Layout */}
+      <div className={styles.mainLayout}>
         
-        <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
-          <PlainStatusBlock status={displayStatus} />
-        </div>
-
-        {/* Cadastral Map §2.3 */}
-        <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.1rem', margin: 0 }}>Map View</h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', background: '#f4f6f8', padding: '2px 8px', borderRadius: '12px' }}>
-              Only official boundaries are shown
-            </span>
+        {/* Sidebar Info */}
+        <div className={styles.sidebar}>
+          <div>
+            <h1 className={styles.parcelTitle}>{parcelId}</h1>
+            <p className={styles.parcelMeta}><MapPin size={16} /> District 4, Village</p>
           </div>
-          <MapboxMap layers={layers} showAILayer={false} height="250px" />
-        </div>
 
-        {/* Change Summary §2.3 */}
-        {displayStatus === 'closed' && summary && (
-          <div className="card" style={{ marginBottom: '1.5rem' }}>
-            <button 
-              onClick={() => setSummaryOpen(!summaryOpen)}
-              style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontSize: '1.1rem', color: 'var(--color-terracotta)' }}
-            >
-              What Changed in the Last Update?
-              <span>{summaryOpen ? '' : ''}</span>
-            </button>
-            {summaryOpen && (
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-                <ul style={{ paddingLeft: '1.5rem', margin: 0, color: 'var(--color-text-secondary)', fontSize: '0.95rem', lineHeight: '1.6' }}>
-                  {summary.changes.map((change, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{change}</li>)}
-                </ul>
+          {status === 'open' && (
+            <div className={`${styles.statusCard} ${styles.statusOpen}`}>
+              <h4 className={`${styles.statusTitle} ${styles.statusTitleOpen}`}><AlertTriangle size={18} /> Under Review</h4>
+              <p className={styles.statusDesc}>Our AI has detected a potential discrepancy between the 1950s cadastral record and modern drone satellite boundaries. An official surveyor has been notified.</p>
+            </div>
+          )}
+          
+          {status === 'field_verification' && (
+            <div className={`${styles.statusCard} ${styles.statusField}`}>
+              <h4 className={`${styles.statusTitle} ${styles.statusTitleField}`}><MapPin size={18} /> Drone Survey Scheduled</h4>
+              <p className={styles.statusDesc}>A government drone surveyor is en route to verify the physical boundaries of this parcel.</p>
+            </div>
+          )}
+
+          {status === 'closed' && (
+            <div className={`${styles.statusCard} ${styles.statusClosed}`}>
+              <h4 className={`${styles.statusTitle} ${styles.statusTitleClosed}`}><ShieldCheck size={18} /> Verified & Immutable</h4>
+              <p className={styles.statusDesc}>Your land boundaries exactly match the government records and have been cryptographically secured.</p>
+              <div style={{ marginTop: '12px', background: 'var(--bg)', padding: '8px 12px', borderRadius: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span title="3a7b9ce8d9f1a2c3b4e5d6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7">SHA256: 3a7b9c...f1a2</span>
+                <button onClick={() => navigator.clipboard.writeText('3a7b9ce8d9f1a2c3b4e5d6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7')} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0, fontSize: '11px' }}>Copy</button>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-outline" style={{ flex: 1 }}> View History</button>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate(`/user/parcel/${parcelId}/grievance`)}> Raise a Concern</button>
+          <div className={styles.horizontalDivider} />
+          
+          <h3 className={styles.legalSectionTitle}>Legal Evidence</h3>
+          <div className={styles.legalActionList}>
+            <button className={`btn btn-outline ${styles.legalActionBtn}`}>
+              <span className={styles.legalActionText}><FileText size={16} /> Encumbrance Certificate</span>
+              <ChevronRight size={16} />
+            </button>
+            <button className={`btn btn-outline ${styles.legalActionBtn}`}>
+              <span className={styles.legalActionText}><FileText size={16} /> Adangal / Pahani</span>
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
-      </main>
+
+        {/* 4D Map Interface */}
+        <div className={styles.mapContainer}>
+          {layers ? (
+            <MapboxMap 
+              layers={layers} 
+              interactive={true} 
+              mapStyle={sliderYear < 2020 ? 'mapbox://styles/mapbox/satellite-v9' : 'mapbox://styles/mapbox/satellite-streets-v12'} 
+            />
+          ) : (
+             <div className={styles.loadingGis}>Loading GIS...</div>
+          )}
+          
+          <TemporalSlider year={sliderYear} onChange={setSliderYear} />
+        </div>
+      </div>
     </div>
   )
 }

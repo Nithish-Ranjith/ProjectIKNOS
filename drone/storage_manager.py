@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 
 class StorageManager:
-    def __init__(self, capture_dir: str = "/tmp/terratrace_captures"):
+    def __init__(self, capture_dir: str = "/tmp/iknos_captures"):
         self.capture_dir = Path(capture_dir)
         self.capture_dir.mkdir(parents=True, exist_ok=True)
         

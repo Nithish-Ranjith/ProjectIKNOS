@@ -1,4 +1,4 @@
-# API Reference — TerraTrace MVP
+# API Reference — IKNOS MVP
 
 **Base URL:** `http://<backend-host>:8000`
 

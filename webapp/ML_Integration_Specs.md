@@ -12,7 +12,7 @@ The frontend expects a specific route to handle inference.
 **Request Payload (from Frontend):**
 ```json
 {
-  "image_uri": "s3://terratrace/mission-123/orthomosaic_tile_4.tif",
+  "image_uri": "s3://iknos/mission-123/orthomosaic_tile_4.tif",
   "bounding_box": [79.432, 11.234, 79.435, 11.237]
 }
 ```

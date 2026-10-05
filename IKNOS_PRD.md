@@ -1,4 +1,4 @@
-# TerraTrace — Product Requirements Document
+# IKNOS — Product Requirements Document
 **One-stop land-record reconciliation application — drone survey, evidence fusion, field verification**
 SIH 2026 · Team StrawHats · Hardware Category
 
@@ -14,7 +14,7 @@ Legend used throughout: **✅ CORE (build this)** · **🔧 PREBUILT (configure,
 
 ## 1. The problem, restated in one paragraph
 
-Land boundary *measurement* is a solved problem. Land boundary *adjudication* — deciding which of several disagreeing evidence sources (cadastral map, Record of Rights, mutation register, registration deed, physical ground reality) should be trusted, and routing that conflict transparently to a human — is not. TerraTrace is a reconciliation layer that consumes survey data (from your drone) and existing government records, detects disagreement, scores confidence, and produces an evidence-backed case for a revenue officer to decide. It never decides ownership itself.
+Land boundary *measurement* is a solved problem. Land boundary *adjudication* — deciding which of several disagreeing evidence sources (cadastral map, Record of Rights, mutation register, registration deed, physical ground reality) should be trusted, and routing that conflict transparently to a human — is not. IKNOS is a reconciliation layer that consumes survey data (from your drone) and existing government records, detects disagreement, scores confidence, and produces an evidence-backed case for a revenue officer to decide. It never decides ownership itself.
 
 ---
 
@@ -24,7 +24,7 @@ Land boundary *measurement* is a solved problem. Land boundary *adjudication* �
 
 ```
                         ┌─────────────────────────┐
-                        │   TERRATRACE BACKEND     │
+                        │   IKNOS BACKEND     │
                         │  FastAPI + PostgreSQL/   │
                         │  PostGIS + Object Store  │
                         └───────────┬─────────────┘
@@ -244,7 +244,7 @@ CREATE TABLE mutation (
 ## 10. Prompt for Antigravity — build command
 
 ```
-ROLE: You are building TerraTrace, an Android + backend land-record reconciliation
+ROLE: You are building IKNOS, an Android + backend land-record reconciliation
 system for a Smart India Hackathon prototype. Follow this PRD exactly — do not
 invent scope beyond what is specified, and do not silently downgrade a specified
 component to something simpler without flagging it back to me first.

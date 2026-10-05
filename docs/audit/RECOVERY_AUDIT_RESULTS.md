@@ -1,4 +1,4 @@
-# TerraTrace Recovery & Concept-Fidelity Audit
+# IKNOS Recovery & Concept-Fidelity Audit
 
 ## Phase 1: Design System Verification
 | CSS Token Set | STATUS | FILE:LINE | EVIDENCE |

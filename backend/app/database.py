@@ -24,7 +24,7 @@ load_dotenv(dotenv_path=_ENV_PATH)
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     # Fallback to local DB for development without .env
-    "postgresql://nithishranjith@localhost:5432/terratrace"
+    "postgresql://nithishranjith@localhost:5432/iknos"
 )
 
 # Supabase requires sslmode=require on the connection string.
@@ -32,7 +32,7 @@ DATABASE_URL = os.environ.get(
 if "pooler.supabase.com" in DATABASE_URL and "sslmode" not in DATABASE_URL:
     DATABASE_URL += "?sslmode=require"
 
-engine = create_engine(DATABASE_URL, echo=False, future=True)
+engine = create_engine(DATABASE_URL, echo=False, future=True, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 

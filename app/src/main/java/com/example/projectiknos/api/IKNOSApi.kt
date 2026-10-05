@@ -14,7 +14,7 @@ data class Case(
     val action: String
 )
 
-interface TerraTraceApi {
+interface IKNOSApi {
 
     // --- Auth ---
     @POST("auth/login")

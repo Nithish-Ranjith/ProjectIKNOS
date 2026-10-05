@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import type { GeometryLayers } from '../types'
 import type { FlightPlan } from '../services/api'
-
+import { BASE, reverseGeocode } from '../services/api'
 
 // Retrieve token from env variables
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN as string
@@ -18,6 +18,7 @@ interface MapboxMapProps {
   telemetry?: any | null
   /** Optional: array of {id, visible} from left-panel toggle state */
   visibleLayers?: { id: string; visible: boolean }[]
+  onParcelClick?: (parcelId: string) => void
 }
 
 // Maps our LayerId → all Mapbox GL layer IDs that should be toggled together
@@ -33,7 +34,7 @@ const LAYER_ID_MAP: Record<string, string[]> = {
   adjacent:          [],
 }
 
-export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = false, height = '300px', flightPlan = null, achievedPoints = null, actualPath = null, telemetry = null, visibleLayers }) => {
+export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = false, height = '300px', flightPlan = null, achievedPoints = null, actualPath = null, telemetry = null, visibleLayers, onParcelClick }) => {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
@@ -43,26 +44,79 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = fals
   useEffect(() => {
     if (!mapContainer.current || !mapboxgl.accessToken || mapRef.current) return
 
-    // Initialize Mapbox map
-    mapRef.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/satellite-v9',
-      center: [80.6445, 16.5032], // Default fallback center (Andhra Pradesh area)
-      zoom: 15,
-      pitch: 45, // Slight 3D pitch
-    })
+    const initMap = (center: [number, number]) => {
+      if (mapRef.current) return;
+      mapRef.current = new mapboxgl.Map({
+        container: mapContainer.current!,
+        style: {
+          version: 8,
+          sources: {
+            'backend-wmts': {
+              type: 'raster',
+              tiles: [`${BASE}/api/wmts/{z}/{x}/{y}.png`],
+              tileSize: 256,
+              maxzoom: 17
+            }
+          },
+          layers: [
+            {
+              id: 'backend-wmts-layer',
+              type: 'raster',
+              source: 'backend-wmts',
+              paint: { 'raster-opacity': 1.0 }
+            }
+          ]
+        },
+        center,
+        zoom: 15,
+        pitch: 45, // Slight 3D pitch
+      });
 
-    const map = mapRef.current
+      const map = mapRef.current;
+      map.on('load', () => setMapLoaded(true));
+      
+      // Wire up reverse geocode on map tap
+      map.on('click', async (e) => {
+        try {
+          const lat = e.lngLat.lat;
+          const lng = e.lngLat.lng;
+          // Add a loading popup
+          const popup = new mapboxgl.Popup({ closeButton: false })
+            .setLngLat([lng, lat])
+            .setHTML('<div style="padding: 8px; font-size: 12px; color: var(--text-2);">Loading address...</div>')
+            .addTo(map);
 
-    map.on('load', () => {
-      setMapLoaded(true)
-    })
+          try {
+            const data = await reverseGeocode(lat, lng);
+            const address = data.address || `${data.village || ''}, ${data.mandal || ''}, ${data.district || ''}`.replace(/^, | , | ,$/g, '');
+            popup.setHTML(`<div style="padding: 8px; font-size: 13px; font-weight: 500; color: #111;">
+              <div style="font-size: 11px; text-transform: uppercase; color: #666; margin-bottom: 4px;">Location Info</div>
+              ${address || 'Address not found'}
+              <div style="font-size: 10px; color: #999; margin-top: 4px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+            </div>`);
+          } catch (apiErr) {
+            popup.setHTML('<div style="padding: 8px; font-size: 12px; color: red;">Failed to load</div>');
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    };
+
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        pos => initMap([pos.coords.longitude, pos.coords.latitude]),
+        () => initMap([80.6445, 16.5032])
+      );
+    } else {
+      initMap([80.6445, 16.5032]);
+    }
 
     return () => {
-      map.remove()
-      mapRef.current = null
-    }
-  }, [])
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || !layers) return
@@ -77,7 +131,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = fals
     }
 
     removeSourceAndLayers('cadastral', ['cadastral-fill', 'cadastral-outline'])
-    removeSourceAndLayers('ai-boundary', ['ai-boundary-outline'])
+    removeSourceAndLayers('ai-boundary', ['ai-boundary-fill', 'ai-boundary-outline'])
 
     // --- CADASTRAL BOUNDARY (Official Record) ---
     if (layers.cadastral) {
@@ -97,6 +151,22 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = fals
         },
       })
 
+      if (onParcelClick) {
+        map.on('click', 'cadastral-fill', (e) => {
+          if (e.features && e.features[0] && e.features[0].properties) {
+            // Stop the general map click event from firing the reverse geocoder
+            e.preventDefault();
+            onParcelClick(e.features[0].properties.parcel_id);
+          }
+        });
+        map.on('mouseenter', 'cadastral-fill', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'cadastral-fill', () => {
+          map.getCanvas().style.cursor = '';
+        });
+      }
+
       // Cadastral outline
       map.addLayer({
         id: 'cadastral-outline',
@@ -107,39 +177,67 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = fals
           'line-width': 2,
         },
       })
+    }
       
-      // Fit bounds to cadastral geometry if it exists
-      try {
-        const coords = (layers.cadastral.geometry.coordinates as number[][][])[0]
-        if (coords && coords.length > 0) {
-          const lons = coords.map(c => c[0])
-          const lats = coords.map(c => c[1])
-          map.fitBounds([
-            [Math.min(...lons), Math.min(...lats)], // SW
-            [Math.max(...lons), Math.max(...lats)]  // NE
-          ], { padding: 40 })
-        }
-      } catch (e) {
-        // Fallback if geometry parsing fails
+    // --- Fit bounds to encompass BOTH cadastral and AI boundary ---
+    try {
+      let allCoords: number[][] = []
+
+      const extractCoords = (feature: any) => {
+        const geom = feature?.geometry
+        if (!geom) return
+        const rings = geom.type === 'MultiPolygon'
+          ? geom.coordinates.flat(1)
+          : geom.coordinates
+        rings?.forEach((ring: number[][]) => { allCoords = allCoords.concat(ring) })
       }
+
+      extractCoords(layers.cadastral)
+      if (showAILayer) extractCoords(layers.ai_boundary)
+
+      if (allCoords.length > 0) {
+        const lons = allCoords.map(c => c[0])
+        const lats = allCoords.map(c => c[1])
+        map.fitBounds(
+          [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+          { padding: 60, duration: 800, maxZoom: 19 }
+        )
+      }
+    } catch (e) {
+      console.error('Error fitting bounds:', e)
     }
 
-    // --- AI BOUNDARY (U-Net Prediction) ---
+    // --- AI BOUNDARY (Spectral / U-Net Prediction) ---
     if (showAILayer && layers.ai_boundary) {
+      const provenance = (layers.ai_boundary as any).properties?.provenance as string | undefined
+      const isSpectral = provenance === 'SPECTRAL_EDGE_DETECTION'
+      const fillColor = isSpectral ? '#E8A838' : '#C97B4A'   // amber for spectral, terracotta for ONNX
+
       map.addSource('ai-boundary', {
         type: 'geojson',
         data: layers.ai_boundary as any,
       })
 
-      // AI outline (Terracotta red, dashed)
+      // Semi-transparent fill so it's clearly visible
+      map.addLayer({
+        id: 'ai-boundary-fill',
+        type: 'fill',
+        source: 'ai-boundary',
+        paint: {
+          'fill-color': fillColor,
+          'fill-opacity': 0.18,
+        },
+      })
+
+      // Dashed outline
       map.addLayer({
         id: 'ai-boundary-outline',
         type: 'line',
         source: 'ai-boundary',
         paint: {
-          'line-color': '#C97B4A',  // --color-terracotta
-          'line-width': 2,
-          'line-dasharray': [2, 2], // Dashed to indicate predicted
+          'line-color': fillColor,
+          'line-width': 2.5,
+          'line-dasharray': [3, 2],
         },
       })
     }
@@ -336,22 +434,35 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = fals
     <div style={{ position: 'relative', height, width: '100%', borderRadius: '6px', overflow: 'hidden' }}>
       <div ref={mapContainer} style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }} />
       {/* Map Legend Overlay */}
-      <div style={{
-        position: 'absolute', top: '10px', left: '10px', background: 'rgba(255,255,255,0.9)',
-        padding: '8px 12px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 1
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-          <div style={{ width: '12px', height: '12px', background: 'var(--color-sage)', border: '1px solid var(--color-sage)', opacity: 0.5 }}></div>
-          <span>Cadastral (RoR)</span>
-        </div>
-        {showAILayer && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '12px', height: '0', borderTop: '2px dashed var(--color-terracotta)' }}></div>
-            <span>AI Boundary (U-Net)</span>
+      {(() => {
+        const provenance = (layers?.ai_boundary as any)?.properties?.provenance as string | undefined
+        const isSpectral = provenance === 'SPECTRAL_EDGE_DETECTION'
+        const aiColor = isSpectral ? '#E8A838' : '#C97B4A'
+        const aiLabel = isSpectral
+          ? 'AI Boundary (Spectral)'
+          : provenance === 'SIMULATED_PRECOMPUTED'
+            ? 'AI Boundary (Simulated)'
+            : 'AI Boundary (ONNX)'
+        return (
+          <div style={{
+            position: 'absolute', top: '10px', left: '10px',
+            background: 'rgba(255,255,255,0.92)',
+            padding: '8px 12px', borderRadius: '6px', fontSize: '0.73rem', fontWeight: 600,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.18)', zIndex: 1, lineHeight: 1.6
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <div style={{ width: '14px', height: '14px', background: '#6B8F71', opacity: 0.5, borderRadius: '2px' }}></div>
+              <span>Cadastral (RoR)</span>
+            </div>
+            {showAILayer && layers?.ai_boundary && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '14px', height: '0', borderTop: `3px dashed ${aiColor}` }}></div>
+                <span style={{ color: aiColor }}>{aiLabel}</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        )
+      })()}
       
       {/* Simulated Badge Overlay */}
       {(flightPlan as any)?.simulated && (

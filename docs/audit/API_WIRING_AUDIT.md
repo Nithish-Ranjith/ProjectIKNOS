@@ -1,4 +1,4 @@
-# TerraTrace — API Wiring Audit
+# IKNOS — API Wiring Audit
 **api.ts stubs vs. backend/app/main.py real routes — complete cross-reference**
 *Generated: 2026-09-29*
 

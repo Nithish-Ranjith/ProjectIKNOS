@@ -1,5 +1,5 @@
 """
-TerraTrace MVP backend.
+IKNOS MVP backend.
 
 Deliberately excluded from this file (see LIMITATIONS.md): authentication/
 role enforcement, hash-chained audit log, parcel lock TTL, authority-tier
@@ -23,7 +23,7 @@ from .database import get_db, engine, Base
 from . import models, schemas
 from .confidence import compute_confidence
 
-app = FastAPI(title="TerraTrace MVP API")
+app = FastAPI(title="IKNOS MVP API")
 
 # Configure CORS for dev and deployed origins
 origins = [

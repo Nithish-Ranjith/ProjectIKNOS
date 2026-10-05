@@ -398,7 +398,7 @@ def run_grievance_mode(target_parcel: str, claimant: str, desc: str):
 # 7. COMMAND-LINE INTERFACE (CLI) ENTRYPOINT
 # ==============================================================================
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="TerraTrace Track A - Land Monitoring Pipeline")
+    parser = argparse.ArgumentParser(description="IKNOS Track A - Land Monitoring Pipeline")
     parser.add_argument(
         "--mode",
         choices=["sweep", "grievance"],

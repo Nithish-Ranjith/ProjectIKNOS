@@ -12,12 +12,15 @@
   "dependencies": {
     "@mapbox/mapbox-gl-draw": "^1.5.2",
     "@supabase/supabase-js": "^2.109.0",
+    "@tanstack/react-query": "^5.104.1",
+    "idb": "^8.0.3",
     "lucide-react": "^1.49.0",
     "mapbox-gl": "^3.31.0",
     "puppeteer": "^24.43.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "sonner": "^2.0.8"
   },
   "devDependencies": {
     "@types/mapbox__mapbox-gl-draw": "^1.4.9",

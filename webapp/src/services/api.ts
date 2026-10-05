@@ -1,5 +1,5 @@
 // 
-// TerraTrace — API Service Layer
+// IKNOS — API Service Layer
 //
 // Every function here represents exactly one backend endpoint from the
 // Architecture Section 6 Master Backend Endpoint List.
@@ -20,11 +20,12 @@ import type {
   ReasoningTrace, DecisionPayload, DashboardStats, Surveyor
 } from '../types'
 
-const BASE = import.meta.env.VITE_API_BASE_URL as string
+export const BASE = import.meta.env.VITE_API_BASE_URL as string || 'http://localhost:8000'
 
 //  Utility 
 
 import { supabase } from '../lib/supabase'
+import { initDB } from './idb'
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession()
@@ -71,17 +72,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 // GET /admin/dashboard/stats
 // Architecture §4.1 — KPI cards
 export async function fetchDashboardStats(): Promise<DashboardStats> {
-  try {
-    return await apiFetch<DashboardStats>('/admin/dashboard/stats')
-  } catch (err) {
-    console.warn("Backend unreachable. Returning STUB dashboard stats.", err);
-    return {
-      open_cases: 3,
-      sla_breaches: 0,
-      avg_resolution_days: 1.2,
-      cases_this_week: 12
-    }
-  }
+  return await apiFetch<DashboardStats>('/admin/dashboard/stats')
 }
 
 function transformBackendCase(backendCase: any): Case {
@@ -102,6 +93,16 @@ function transformBackendCase(backendCase: any): Case {
   }
 }
 
+// GET /map/parcels
+export async function fetchMapParcels(): Promise<any> {
+  return apiFetch<any>('/map/parcels')
+}
+
+// GET /api/reverse-geocode
+export async function reverseGeocode(lat: number, lng: number): Promise<any> {
+  return apiFetch<any>(`/api/reverse-geocode?lat=${lat}&lng=${lng}`)
+}
+
 // GET /cases?status=&min_confidence=&page=&per_page=
 // Architecture §4.2 — Case Queue
 export async function fetchCases(params: {
@@ -111,9 +112,30 @@ export async function fetchCases(params: {
   per_page?: number
 } = {}): Promise<PaginatedCases> {
   const qs = new URLSearchParams(params as Record<string, string>).toString()
-  const res = await apiFetch<any[]>(`/cases${qs ? `?${qs}` : ''}`)
-  const mapped = res.map(transformBackendCase)
-  return { cases: mapped, total: mapped.length, page: params.page || 1, per_page: params.per_page || 20 }
+  try {
+    const res = await apiFetch<any[]>(`/cases${qs ? `?${qs}` : ''}`)
+    const mapped = res.map(transformBackendCase)
+    const result = { cases: mapped, total: mapped.length, page: params.page || 1, per_page: params.per_page || 20 }
+    
+    // Save to IndexedDB
+    try {
+      const db = await initDB();
+      await db.put('cases', result, `all-cases-${qs}`);
+    } catch (dbErr) {
+      console.warn("Failed to cache cases:", dbErr);
+    }
+    
+    return result;
+  } catch (error) {
+    if (!navigator.onLine) {
+      try {
+        const db = await initDB();
+        const cached = await db.get('cases', `all-cases-${qs}`);
+        if (cached) return cached;
+      } catch {}
+    }
+    throw error;
+  }
 }
 
 // GET /cases/:id
@@ -127,7 +149,25 @@ export async function fetchCase(caseId: string): Promise<Case> {
 // Architecture §4.3 — EvidenceMap (cadastral + AI boundary + drone coverage)
 // NOTE: ai_boundary is null until U-Net endpoint is live (see ML_Integration_Specs.md)
 export async function fetchGeometryLayers(caseId: string): Promise<GeometryLayers> {
-  return await apiFetch<GeometryLayers>(`/cases/${caseId}/geometry-layers`)
+  try {
+    const res = await apiFetch<GeometryLayers>(`/cases/${caseId}/geometry-layers`);
+    try {
+      const db = await initDB();
+      await db.put('geometries', res, caseId);
+    } catch (dbErr) {
+      console.warn("Failed to cache geometry layers:", dbErr);
+    }
+    return res;
+  } catch (error) {
+    if (!navigator.onLine) {
+      try {
+        const db = await initDB();
+        const cached = await db.get('geometries', caseId);
+        if (cached) return cached;
+      } catch {}
+    }
+    throw error;
+  }
 }
 
 // GET /cases/:id/evidence
@@ -185,20 +225,16 @@ export async function submitDecision(caseId: string, payload: DecisionPayload): 
 // POST /cases/:id/assign
 // Architecture §4.3 — Assign surveyor
 export async function assignCase(caseId: string, surveyorId: string): Promise<void> {
-  // [STUB] — replace with: return apiFetch(`/cases/${caseId}/assign`, { method: 'POST', body: JSON.stringify({ surveyor_id: surveyorId }) })
-  await delay(300)
-  console.info(`[STUB] Assigned case ${caseId} to surveyor ${surveyorId}`)
+  return apiFetch(`/cases/${caseId}/assign`, { 
+    method: 'POST', 
+    body: JSON.stringify({ surveyor_id: surveyorId }) 
+  });
 }
 
 // GET /admin/surveyors
 // Architecture §4.4
 export async function fetchSurveyors(): Promise<Surveyor[]> {
-  // [STUB] — replace with: return apiFetch<Surveyor[]>('/admin/surveyors')
-  await delay(400)
-  return [
-    { id: 's1', name: 'K. Venkata Rao', email: 'kvrao@ap.gov.in', dgca_credential: 'DGCA-0091', assigned_case_count: 3 },
-    { id: 's2', name: 'P. Lakshmi Devi', email: 'plakshmi@ap.gov.in', dgca_credential: undefined, assigned_case_count: 5 },
-  ]
+  return apiFetch<Surveyor[]>('/admin/surveyors');
 }
 
 //  Helpers 
@@ -216,20 +252,11 @@ function delay(ms: number) { return new Promise(r => setTimeout(r, ms)) }
 export async function fetchCurrentUserProfile(): Promise<{ id: string; name: string; phone: string; linked_parcels: string[] }> {
   const user = await apiFetch<any>('/users/me')
   
-  // Deriving linked parcels from /my-cases since the backend doesn't explicitly return them on /users/me yet.
-  let linked_parcels: string[] = []
-  try {
-    const myCases = await apiFetch<any[]>('/my-cases')
-    linked_parcels = Array.from(new Set(myCases.map(c => c.parcel_id)))
-  } catch (err) {
-    console.warn("Could not fetch my-cases for linked parcels", err)
-  }
-
   return {
     id: user.user_id,
     name: user.username,
-    phone: '+91 9876543210', // Mocked as backend UserOut lacks this currently
-    linked_parcels
+    phone: user.phone || '+91 9876543210',
+    linked_parcels: user.owned_parcel_ids || []
   }
 }
 
@@ -240,13 +267,16 @@ export async function fetchSatelliteTimeseries(parcelId: string): Promise<any[]>
 // GET /parcels/:id/summary
 // Architecture §2.1 — Parcel card data
 export async function fetchParcelSummary(parcelId: string): Promise<{ parcel_id: string; village: string; area_sqm: number; latest_status: CaseStatus }> {
-  // Try fetching the active case to derive summary
   try {
-    const activeCase = await fetchActiveCaseForParcel(parcelId)
+    const [parcelData, activeCase] = await Promise.all([
+      apiFetch<any>(`/parcels/${parcelId}`).catch(() => null),
+      fetchActiveCaseForParcel(parcelId).catch(() => null)
+    ])
+    
     return {
       parcel_id: parcelId,
-      village: activeCase?.village || 'Unknown',
-      area_sqm: 4820,
+      village: parcelData?.village || activeCase?.village || 'Unknown',
+      area_sqm: parcelData?.area_sqm || 0,
       latest_status: activeCase?.status || 'closed'
     }
   } catch (e) {
@@ -297,6 +327,11 @@ export async function submitGrievance(payload: { parcel_id: string; text: string
   })
 
   return { grievance_id: res.objection_id || `g-${Math.floor(Math.random() * 10000)}` }
+}
+
+// GET /objections/:parcel_id
+export async function fetchObjections(parcelId: string): Promise<any[]> {
+  return apiFetch<any[]>(`/objections/${parcelId}`)
 }
 
 // 
@@ -368,21 +403,19 @@ export async function triggerOdmPipeline(missionId: string): Promise<{ status: s
 }
 
 // GET /missions/:id/odm-status
-export async function pollOdmStatus(missionId: string, taskId?: string, projectId?: string, simulateState?: string): Promise<MissionProcessStatus> {
-  if (simulateState === 'failed') return { stage: 'failed', progress_pct: 45, failure_reason: 'Stitching failed: Insufficient overlap between captures.' }
-  if (simulateState === 'done') return { stage: 'done', progress_pct: 100 }
-  if (simulateState === 'normal') return { stage: 'stitching', progress_pct: 68 }
-
+export async function pollOdmStatus(missionId: string, taskId?: string, projectId?: string): Promise<MissionProcessStatus> {
   if (!taskId || !projectId) {
-    // If ODM is skipped (no token) but we didn't force a simulateState, we just simulate success after a delay so the demo doesn't permanently block.
-    await delay(1500)
-    return { stage: 'done', progress_pct: 100 }
+    throw new Error('ODM task ID or project ID missing. ODM processing cannot be polled.')
   }
-
   const res = await apiFetch<{ status: string, note?: string }>(`/missions/${missionId}/odm-status?task_id=${taskId}&project_id=${projectId}`)
   if (res.status === 'ERROR' || res.status === 'FAILED') return { stage: 'failed', progress_pct: 0, failure_reason: res.note }
   if (res.status === 'COMPLETED' || res.status === 'SUCCESS') return { stage: 'done', progress_pct: 100 }
   return { stage: 'stitching', progress_pct: 50 } // Map other ODM states to stitching
+}
+
+// POST /missions/:id/run-unet
+export async function runUnetInference(missionId: string): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/missions/${missionId}/run-unet`, { method: 'POST' })
 }
 
 // GET /surveyor/assignments?type=mission|field_visit
@@ -456,15 +489,7 @@ export async function submitFieldVerification(
 // GET /surveyor/history
 // Architecture §3.4
 export async function fetchSurveyorHistory(): Promise<Assignment[]> {
-  try {
-    return await apiFetch<Assignment[]>('/surveyor/history')
-  } catch (err) {
-    console.warn("Backend unreachable. Returning STUB surveyor history.", err);
-    return [
-      { assignment_id: 'h001', case_id: 'c004', parcel_id: 'AP-GNT-110-0064', village: 'Phirangipuram', district: 'Guntur', type: 'field_visit', status: 'submitted', assigned_at: '2026-08-15T09:00:00Z' },
-      { assignment_id: 'h002', case_id: 'c002', parcel_id: 'AP-GNT-102-0041', village: 'Mangalagiri',   district: 'Guntur', type: 'field_visit', status: 'submitted', assigned_at: '2026-07-20T11:00:00Z' },
-    ]
-  }
+  return await apiFetch<Assignment[]>('/surveyor/history')
 }
 
 // 
@@ -543,32 +568,17 @@ export const STUB_CASES: Case[] = [
 
 // GET /cases/:id/images
 export async function fetchCaseImages(caseId: string): Promise<any> {
-  let res: any = { images: [] };
-  try {
-    res = await apiFetch<any>(`/cases/${caseId}/images`)
-  } catch (e) {
-    console.warn("fetchCaseImages failed, falling back to mock data", e)
-  }
-  
-  if (!res.images || res.images.length === 0) {
-    // Generate mock images for the demo to work
-    const mockImages = Array.from({ length: 92 }).map((_, i) => ({
-      seq: i,
-      quality_flag: Math.random() > 0.1 ? 'PASS' : 'FAIL',
-      lon: 79.986 + (Math.random() * 0.002),
-      lat: 16.306 + (Math.random() * 0.002),
-      alt_m: 60 + Math.random() * 5,
-      timestamp_gps: new Date().toISOString()
-    }))
-    return { ...res, images: mockImages, mission_id: res?.mission_id || 'mock-mission' }
-  }
-  return res
+  return await apiFetch<any>(`/cases/${caseId}/images`)
 }
 
 export async function fetchMissionQcSummary(missionId: string): Promise<any> {
-  try {
-    return await apiFetch<any>(`/missions/${missionId}/qc-summary`)
-  } catch (e) {
-    return { pass_count: 85, fail_count: 7 }
-  }
+  return await apiFetch<any>(`/missions/${missionId}/qc-summary`)
+}
+
+export async function fetchAuditTrail(caseId: string): Promise<any[]> {
+  return await apiFetch<any[]>(`/cases/${caseId}/audit`)
+}
+
+export async function verifyAuditChain(caseId: string): Promise<{ valid: boolean; first_broken_seq: number | null; entries_checked: number }> {
+  return await apiFetch<any>(`/audit/verify/${caseId}`)
 }

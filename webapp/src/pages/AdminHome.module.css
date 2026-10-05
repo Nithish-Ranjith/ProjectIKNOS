@@ -1,0 +1,201 @@
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: auto;
+}
+
+.mainContent {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 40px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.headerTitle {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-1);
+}
+
+.headerSubtitle {
+  color: var(--text-2);
+  font-size: 14px;
+  margin: 0;
+}
+
+.btnPrimary {
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loadingState {
+  text-align: center;
+  padding: 64px;
+  color: var(--text-3);
+}
+
+.spinner {
+  margin-bottom: 16px;
+}
+
+.kpiCard {
+  flex: 1 1 240px;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpiCardAlert {
+  border-color: var(--red);
+}
+
+.kpiCardAlertTop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--red);
+}
+
+.kpiHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.kpiTitle {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.kpiIcon {
+  color: var(--text-2);
+}
+
+.kpiIconAlert {
+  color: var(--red);
+}
+
+.kpiValue {
+  font-size: 36px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-1);
+}
+
+.kpiValueAlert {
+  color: var(--red);
+}
+
+.gridContent {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: fadeIn 0.4s ease;
+}
+
+.kpiGrid {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.cardPanel {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid var(--border);
+}
+
+.panelTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alertList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.alertItem {
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.alertDanger {
+  background: var(--red-dim);
+  border: 1px solid var(--red-dim);
+}
+
+.alertInfo {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-dim);
+}
+
+.alertTitle {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.alertTitleDanger {
+  color: var(--red);
+}
+
+.alertTitleInfo {
+  color: var(--accent);
+}
+
+.alertText {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.actionBtn {
+  padding: 16px;
+  justify-content: space-between;
+  display: flex;
+}
+
+.actionBtnText {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

@@ -11,6 +11,15 @@ export const Login: React.FC = () => {
   
   const navigate = useNavigate()
 
+  const handleDemoLogin = async (demoRole: string, demoEmail: string) => {
+    setLoading(true)
+    setError(null)
+    localStorage.setItem('demo_session', JSON.stringify({ email: demoEmail, role: demoRole }))
+    if (demoRole === 'surveyor') navigate('/surveyor/home')
+    else if (demoRole === 'admin') navigate('/admin/home')
+    else navigate('/user/home')
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -18,34 +27,18 @@ export const Login: React.FC = () => {
 
     if (email.endsWith('@demo.com')) {
       localStorage.setItem('demo_session', JSON.stringify({ email, role }))
-      if (role === 'surveyor') window.location.href = '/surveyor/home'
-      else if (role === 'admin') window.location.href = '/admin/home'
-      else window.location.href = '/user/home'
+      if (role === 'surveyor') navigate('/surveyor/home')
+      else if (role === 'admin') navigate('/admin/home')
+      else navigate('/user/home')
       return
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInError) {
-      if (signInError.message.includes('Invalid login credentials')) {
-         const { error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { role } }
-         })
-         if (signUpError) {
-           setError(signUpError.message)
-           setLoading(false)
-           return
-         }
-      } else {
-        setError(signInError.message)
-        setLoading(false)
-        return
-      }
+      setError('Invalid email or password. Use the Quick Access buttons below for the demo.')
+      setLoading(false)
+      return
     }
 
     setLoading(false)
@@ -167,24 +160,27 @@ export const Login: React.FC = () => {
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button 
-              onClick={() => { setRole('user'); setEmail('user@demo.com'); setPassword('password123'); }}
-              style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}
+              onClick={() => handleDemoLogin('user', 'user@demo.com')}
+              disabled={loading}
+              style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
               onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
               onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
             >
               Citizen
             </button>
             <button 
-              onClick={() => { setRole('surveyor'); setEmail('drone1@demo.com'); setPassword('password123'); }}
-              style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}
+              onClick={() => handleDemoLogin('surveyor', 'drone1@demo.com')}
+              disabled={loading}
+              style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
               onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
               onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
             >
               Surveyor
             </button>
             <button 
-              onClick={() => { setRole('admin'); setEmail('admin@demo.com'); setPassword('password123'); }}
-              style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}
+              onClick={() => handleDemoLogin('admin', 'admin@demo.com')}
+              disabled={loading}
+              style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
               onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
               onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
             >

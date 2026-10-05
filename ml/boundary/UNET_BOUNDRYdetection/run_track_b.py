@@ -1,5 +1,5 @@
 """
-run_track_b.py -- TerraTrace Track B: Targeted Investigation & Field Verification
+run_track_b.py -- IKNOS Track B: Targeted Investigation & Field Verification
 
 Ingests an escalated Case JSON (v1.1) produced by Track A and advances it
 through the targeted-investigation pipeline:
@@ -619,7 +619,7 @@ def cmd_approve(case: dict, approving_officer_id: str, is_senior: bool) -> dict:
 # --------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="TerraTrace Track B: Targeted Investigation")
+    p = argparse.ArgumentParser(description="IKNOS Track B: Targeted Investigation")
     p.add_argument("--case-file", required=True, help="Path to the Case JSON to operate on.")
     sub = p.add_subparsers(dest="mode", required=True)
 

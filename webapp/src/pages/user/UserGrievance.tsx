@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { submitGrievance } from '../../services/api'
+import { toast } from 'sonner'
 
 //  Photo thumbnail 
 const PhotoThumb: React.FC<{ uri: string; onRemove: () => void }> = ({ uri, onRemove }) => (
@@ -56,20 +57,25 @@ export const UserGrievance: React.FC = () => {
     if (text.trim().length === 0 || !parcelId) return
     setSubmitting(true)
     setError(null)
-    try {
+    
+    const submitPromise = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       await submitGrievance({
         parcel_id: parcelId,
         text: text.trim(),
-        photo_uris: photoUris, // Note: Ephemeral object URLs here; Supabase Storage in real app
-        submitted_by: session?.user.email ?? 'unknown',
+        photo_uris: photoUris,
+        submitted_by: session?.user?.email ?? 'unknown',
       })
       setSubmitted(true)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setSubmitting(false)
-    }
+    };
+
+    toast.promise(submitPromise(), {
+      loading: 'Submitting grievance securely...',
+      success: 'Grievance submitted successfully. Case created.',
+      error: (err) => `Failed: ${err.message || 'Network error'}`
+    })
+
+    setSubmitting(false)
   }
 
   const handleLogout = async () => {

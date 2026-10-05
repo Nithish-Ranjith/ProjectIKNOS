@@ -84,7 +84,9 @@ export function RightOperationsPanel({ state, onTransition }: Props) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
              <div>
                <div className="text-muted" style={{ fontSize: '10px' }}>Confidence</div>
-               <div className="text-brand" style={{ fontWeight: 700, fontSize: '18px' }}>0.87</div>
+               <div className="text-brand" style={{ fontWeight: 700, fontSize: '18px' }}>
+                 {state.inference?.confidence != null ? state.inference.confidence : '—'}
+               </div>
              </div>
              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
                <div style={{ width: 16, height: 6, background: 'var(--color-brand)', borderRadius: '2px' }} /> Detected Boundary
@@ -137,15 +139,13 @@ export function RightOperationsPanel({ state, onTransition }: Props) {
       <div className="card" style={{ padding: 'var(--spacing-lg) var(--spacing-xl)', flex: 1, display: 'flex', flexDirection: 'column', background: 'transparent', border: 'none', borderRadius: 0 }}>
         <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 'var(--spacing-md)' }}>Block Sequence</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto' }}>
-          {[
-            { id: 'B1', status: 'Completed', progress: 100 },
-            { id: 'B2', status: 'Completed', progress: 100 },
-            { id: 'B3', status: 'In Progress', progress: 60 },
-            { id: 'B4', status: 'Pending', progress: 0 },
-            { id: 'B5', status: 'Pending', progress: 0 },
-          ].map(block => {
-            const isCompleted = block.status === 'Completed';
-            const isInProgress = block.status === 'In Progress';
+          {(state.blocks && state.blocks.length > 0 ? state.blocks : [
+            { id: 'B1', status: 'PENDING', progress: 0 },
+            { id: 'B2', status: 'PENDING', progress: 0 },
+            { id: 'B3', status: 'PENDING', progress: 0 },
+          ]).map(block => {
+            const isCompleted = block.status === 'COMPLETED';
+            const isInProgress = block.status === 'IN_PROGRESS';
             return (
               <div key={block.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '6px 0', background: 'transparent' }}>
                 <div style={{ 
@@ -159,13 +159,12 @@ export function RightOperationsPanel({ state, onTransition }: Props) {
                 </div>
                 <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-text-primary)' }}>{block.id}</div>
                 <div style={{ width: '80px', fontSize: '12px', color: isCompleted ? 'var(--color-brand)' : isInProgress ? 'var(--color-active)' : 'var(--color-text-secondary)' }}>
-                  {block.status}
+                  {isCompleted ? 'Completed' : isInProgress ? 'In Progress' : 'Pending'}
                 </div>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ flex: 1, height: '4px', background: 'var(--color-surface)', borderRadius: '2px', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${block.progress}%`, background: isCompleted ? 'var(--color-brand)' : 'var(--color-active)' }} />
                   </div>
-                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase' }}>Clear</span>
                 </div>
               </div>
             );
