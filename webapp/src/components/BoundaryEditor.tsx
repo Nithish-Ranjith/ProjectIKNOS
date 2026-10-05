@@ -59,6 +59,10 @@ export const BoundaryEditor: React.FC<BoundaryEditorProps> = ({
   // We wrap `new mapboxgl.Map(...)` inside an `initMap` callback so we can pass
   // it as both the geolocation success handler AND the error/timeout fallback.
   useEffect(() => {
+    if (!mapboxgl.accessToken) {
+      console.error('Mapbox token is missing!');
+      return;
+    }
     if (mapRef.current || !mapContainer.current) return;
 
 

@@ -42,7 +42,11 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = fals
   const droneMarkerRef = useRef<mapboxgl.Marker | null>(null)
 
   useEffect(() => {
-    if (!mapContainer.current || !mapboxgl.accessToken || mapRef.current) return
+    if (!mapboxgl.accessToken) {
+      console.error('Mapbox token is missing from environment variables!');
+      return;
+    }
+    if (!mapContainer.current || mapRef.current) return;
 
     const initMap = (center: [number, number]) => {
       if (mapRef.current) return;
