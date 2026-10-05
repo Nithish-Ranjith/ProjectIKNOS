@@ -107,14 +107,9 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = fals
       });
     };
 
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        pos => initMap([pos.coords.longitude, pos.coords.latitude]),
-        () => initMap([80.6445, 16.5032])
-      );
-    } else {
-      initMap([80.6445, 16.5032]);
-    }
+    // Do not wait for geolocation (it hangs indefinitely if user ignores the prompt)
+    // The layers effect will automatically fly the camera to the correct parcel bounds anyway.
+    initMap([80.6445, 16.5032]);
 
     return () => {
       mapRef.current?.remove();
