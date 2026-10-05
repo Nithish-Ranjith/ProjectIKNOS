@@ -61,17 +61,9 @@ export const BoundaryEditor: React.FC<BoundaryEditorProps> = ({
   useEffect(() => {
     if (mapRef.current || !mapContainer.current) return;
 
-    // Derive initial center from cadastral geometry if available
-    let cadastralCenter: [number, number] | null = null;
-    if (cadastral?.geometry.type === 'Polygon') {
-      const coords = cadastral.geometry.coordinates as number[][][];
-      if (coords[0]?.[0]) {
-        cadastralCenter = [coords[0][0][0], coords[0][0][1]];
-      }
-    }
 
     // ─── Inner factory: creates the Map instance at a resolved center ──────────
-    const initMap = (center: [number, number]) => {
+    const initMap = () => {
       if (mapRef.current || !mapContainer.current) return; // Guard double-init
 
       const mapInstance = new mapboxgl.Map({
@@ -151,7 +143,7 @@ export const BoundaryEditor: React.FC<BoundaryEditorProps> = ({
 
     // No geolocation here to ensure instant map creation.
     // The data injection effect will fly the camera to the correct parcel bounds.
-    initMap([80.648, 16.506]);
+    initMap();
 
     return () => {
       mapRef.current?.remove();

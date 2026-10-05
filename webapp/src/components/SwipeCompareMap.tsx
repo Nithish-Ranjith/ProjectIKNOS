@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { ArrowLeftRight, Layers } from 'lucide-react';
 
 export const SwipeCompareMap: React.FC<{ beforeImg: string; afterImg: string; aiOverlay?: any }> = ({ beforeImg, afterImg, aiOverlay }) => {

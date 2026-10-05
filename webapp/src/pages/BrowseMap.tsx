@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MapboxMap } from '../components/MapboxMap'
 import styles from './BrowseMap.module.css'
 import type { GeometryLayers } from '../types'
-import { MapPin, Search } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import { fetchMapParcels } from '../services/api'
 import { toast } from 'sonner'
 
@@ -17,7 +17,7 @@ export const BrowseMap: React.FC = () => {
     const fetchParcels = async () => {
       try {
         const data = await fetchMapParcels()
-        setLayers({ cadastral: data })
+        setLayers({ cadastral: data } as any)
       } catch (err: any) {
         toast.error(`Failed to load parcels: ${err.message}`)
         console.error('Failed to fetch map parcels', err)
@@ -29,8 +29,8 @@ export const BrowseMap: React.FC = () => {
   }, [])
 
   const handleParcelClick = (parcelId: string) => {
-    if (layers?.cadastral && layers.cadastral.type === 'FeatureCollection') {
-      const feature = layers.cadastral.features.find((f: any) => f.properties?.parcel_id === parcelId)
+    if (layers?.cadastral && (layers.cadastral as any).type === 'FeatureCollection') {
+      const feature = (layers.cadastral as any).features.find((f: any) => f.properties?.parcel_id === parcelId)
       if (feature) {
         setSelectedParcel(feature.properties)
       }

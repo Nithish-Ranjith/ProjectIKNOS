@@ -112,8 +112,6 @@ export const UserParcelDetail: React.FC = () => {
           {layers ? (
             <MapboxMap 
               layers={layers} 
-              interactive={true} 
-              mapStyle={sliderYear < 2020 ? 'mapbox://styles/mapbox/satellite-v9' : 'mapbox://styles/mapbox/satellite-streets-v12'} 
             />
           ) : (
              <div className={styles.loadingGis}>Loading GIS...</div>

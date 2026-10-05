@@ -11,7 +11,7 @@ import { SentinelTimelapse } from '../../components/SentinelTimelapse';
 import { fetchGeometryLayers, approveAoi, fetchFlightPlan, fetchCaseImages, fetchMissionQcSummary, fetchCase, downloadReport, pollOdmStatus, triggerOdmPipeline, runUnetInference } from '../../services/api';
 import { MapboxMap } from '../../components/MapboxMap';
 import type { GeometryLayers, GeoJSONFeature } from '../../types';
-import type { FlightPlan } from '../../services/api';
+
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -425,7 +425,7 @@ const PIPELINE_STAGES = [
   { key: 'index',      label: 'Index & Commit',        desc: 'Hashing outputs and committing to case file', icon: '✦', durationMs: 3000 },
 ];
 
-function ProcessStep({ state, setMissionState, onComplete }: { state: any, setMissionState: any, onComplete: () => void }) {
+function ProcessStep({ onComplete }: { state: any, setMissionState: any, onComplete: () => void }) {
   const { id } = useParams();
   const queryClient = useQueryClient();
   const [parcelId, setParcelId] = useState<string | null>(null);
@@ -436,7 +436,8 @@ function ProcessStep({ state, setMissionState, onComplete }: { state: any, setMi
   const [isDone, setIsDone] = useState(false);
   const [hasError] = useState(false);
   const [imgCount, setImgCount] = useState(0);
-  const [pointCount, setPointCount] = useState(0);
+  const [pointCount] = useState(0);
+
   const logsEndRef = { current: null as HTMLDivElement | null };
 
   const addLog = (msg: string, level: 'info'|'warn'|'ok' = 'info') => {
@@ -519,7 +520,7 @@ function ProcessStep({ state, setMissionState, onComplete }: { state: any, setMi
             const status = await pollOdmStatus(id, currentTaskId, currentProjectId);
             
             // Map status to our UI stages roughly
-            if (status.stage === 'stitching' || status.stage === 'running') {
+            if (status.stage === ('stitching' as any) || status.stage === ('running' as any)) {
               setActiveStage(2); // sfm
               setStageProgress(status.progress_pct || 50);
               setOverallProgress(50);
@@ -864,7 +865,7 @@ export function SurveyorMission() {
             <ParcelStep 
               state={missionState} 
               setMissionState={setMissionState}
-              layers={layers}
+              layers={layers || null}
               onApproveSuccess={() => navigate(`/surveyor/mission/${id}/plan`, { replace: true })}
               onProceedToPlan={() => navigate(`/surveyor/mission/${id}/plan`, { replace: true })}
             />
@@ -877,7 +878,7 @@ export function SurveyorMission() {
               <PlanStep 
                 state={missionState}
                 setMissionState={setMissionState}
-                layers={layers}
+                layers={layers || null}
                 onPlanLocked={() => {
                   setMissionState((prev: any) => ({ ...prev, state: 'FLYING' }));
                   navigate(`/surveyor/mission/${id}/fly`, { replace: true });
@@ -891,7 +892,7 @@ export function SurveyorMission() {
               state={missionState}
               setMissionState={setMissionState}
               transitionTo={transitionTo}
-              layers={layers}
+              layers={layers || null}
             />
           } />
           
@@ -899,7 +900,7 @@ export function SurveyorMission() {
             <CaptureStep 
               state={missionState}
               setMissionState={setMissionState}
-              layers={layers}
+              layers={layers || null}
               onAccept={() => {
                 setMissionState((prev: any) => ({ ...prev, state: 'PROCESSING' }));
                 navigate(`/surveyor/mission/${id}/process`, { replace: true });

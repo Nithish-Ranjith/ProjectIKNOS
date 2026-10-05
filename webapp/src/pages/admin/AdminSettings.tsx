@@ -83,7 +83,7 @@ export const AdminSettings: React.FC = () => {
                 onClick={() => setActiveTab(tab.id as any)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 16px', borderRadius: '8px', border: 'none',
+                  padding: '12px 16px', borderRadius: '8px',
                   background: activeTab === tab.id ? 'var(--color-surface)' : 'transparent',
                   color: activeTab === tab.id ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
                   fontWeight: activeTab === tab.id ? 600 : 500,
