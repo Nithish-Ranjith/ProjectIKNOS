@@ -21,6 +21,17 @@ export const MissionStepper: React.FC<MissionStepperProps> = ({ currentState, mi
   const navigate = useNavigate();
   const currentStepIndex = STEPS.findIndex(s => s.states.includes(currentState));
   
+  const [timeStr, setTimeStr] = React.useState('');
+  React.useEffect(() => {
+    const updateTime = () => setTimeStr(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+    updateTime();
+    const interval = setInterval(updateTime, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const isDroneActive = currentStepIndex >= 2; // Steps 3 (Fly) and beyond
+
+  
   return (
     <header style={{ 
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -108,12 +119,22 @@ export const MissionStepper: React.FC<MissionStepperProps> = ({ currentState, mi
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-lg)' }}>
         {telemetry && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>
-            <span style={{ color: 'var(--color-brand)' }}>
-               {telemetry.positioningState.replace('_', ' ')}
-            </span>
-            <span>Signal: Strong</span>
-            <span style={{ color: 'var(--color-brand)' }}>Bat: {Math.round(telemetry.batteryPercent || 0)}%</span>
-            <span>11:24 AM</span>
+            {isDroneActive ? (
+              <>
+                <span style={{ color: 'var(--color-brand)' }}>
+                   {telemetry.positioningState.replace('_', ' ')}
+                </span>
+                <span>Signal: Strong</span>
+                <span style={{ color: 'var(--color-brand)' }}>Bat: {Math.round(telemetry.batteryPercent || 0)}%</span>
+              </>
+            ) : (
+              <>
+                <span style={{ color: 'var(--color-warning, #f59e0b)' }}>DRONE DISCONNECTED</span>
+                <span>Signal: --</span>
+                <span>Bat: --</span>
+              </>
+            )}
+            <span>{timeStr}</span>
           </div>
         )}
         
