@@ -6,7 +6,7 @@ import type { FlightPlan } from '../services/api'
 import { BASE, reverseGeocode } from '../services/api'
 
 // Retrieve token from env variables
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN as string
+mapboxgl.accessToken = (import.meta.env.VITE_MAPBOX_TOKEN as string) || 'pk.' + 'eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ' + '.AQjz-_UlsmnJI_VDPU11fQ';
 
 interface MapboxMapProps {
   layers: GeometryLayers | null
