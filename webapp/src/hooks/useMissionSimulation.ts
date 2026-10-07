@@ -29,6 +29,7 @@ const simulateMovement = (telemetry: DroneTelemetry): DroneTelemetry => {
     lon: lon + lonJitter,
     headingDeg: ((headingDeg || 0) + headingFlutter + 360) % 360,
     batteryPercent: Math.max(0, (telemetry.batteryPercent || 100) - 0.05), // Drain battery
+    signalStrength: Math.random() > 0.95 ? 'Weak' : 'Strong', // Occasionally drop signal
     timestamp: new Date().toISOString()
   };
 };
@@ -72,6 +73,7 @@ const createInitialState = (missionId: string): MissionViewState => ({
     speedMps: 4.8,
     headingDeg: 90,
     batteryPercent: 78,
+    signalStrength: 'Strong',
     positioningState: 'GPS_3D',
     timestamp: new Date().toISOString()
   },

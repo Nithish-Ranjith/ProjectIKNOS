@@ -124,13 +124,15 @@ export const MissionStepper: React.FC<MissionStepperProps> = ({ currentState, mi
                 <span style={{ color: 'var(--color-brand)' }}>
                    {telemetry.positioningState.replace('_', ' ')}
                 </span>
-                <span>Signal: Strong</span>
+                <span style={{ color: telemetry.signalStrength === 'Weak' ? 'var(--color-warning, #f59e0b)' : 'inherit' }}>
+                  Signal: {telemetry.signalStrength || 'Strong'}
+                </span>
                 <span style={{ color: 'var(--color-brand)' }}>Bat: {Math.round(telemetry.batteryPercent || 0)}%</span>
               </>
             ) : (
               <>
                 <span style={{ color: 'var(--color-warning, #f59e0b)' }}>DRONE DISCONNECTED</span>
-                <span>Signal: --</span>
+                <span>Signal: NO SIGNAL</span>
                 <span>Bat: --</span>
               </>
             )}
@@ -138,7 +140,12 @@ export const MissionStepper: React.FC<MissionStepperProps> = ({ currentState, mi
           </div>
         )}
         
-        <button style={{ background: 'transparent', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', color: 'var(--color-text-primary)', padding: '4px 12px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', cursor: 'pointer' }}>Settings</button>
+        <button 
+          style={{ background: 'transparent', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', color: 'var(--color-text-primary)', padding: '4px 12px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', cursor: 'pointer' }}
+          onClick={() => alert('Hardware settings are locked during simulated flight mode.')}
+        >
+          Settings
+        </button>
         
         <button style={{ background: 'var(--color-danger)', border: 'none', borderRadius: 'var(--radius-sm)', color: '#fff', padding: '4px 16px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', cursor: 'pointer' }} onClick={onEndMission}>
           End Mission

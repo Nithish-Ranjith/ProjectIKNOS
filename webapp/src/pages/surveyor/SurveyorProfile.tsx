@@ -10,6 +10,10 @@ export const SurveyorProfile: React.FC = () => {
     setLoading(true)
     fetchCurrentUserProfile()
       .then(setProfile)
+      .catch(err => {
+        console.error('Failed to load profile:', err)
+        setProfile(null)
+      })
       .finally(() => setLoading(false))
   }, [])
 

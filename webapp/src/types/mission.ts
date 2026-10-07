@@ -81,6 +81,7 @@ export interface DroneTelemetry {
   speedMps: number | null;
   headingDeg: number | null;
   batteryPercent: number | null;
+  signalStrength: string | null;
   positioningState: PositioningState;
   timestamp: string;
 }

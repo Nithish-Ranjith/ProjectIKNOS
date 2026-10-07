@@ -27,6 +27,9 @@ export const AuthRoute: React.FC<AuthRouteProps> = ({ allowedRoles }) => {
         setRole(session.user.user_metadata?.role || 'user')
       }
       setLoading(false)
+    }).catch(err => {
+      console.error('Session fetch failed:', err)
+      setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

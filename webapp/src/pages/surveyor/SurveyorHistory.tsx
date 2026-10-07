@@ -10,6 +10,10 @@ export const SurveyorHistory: React.FC = () => {
     setLoading(true)
     fetchSurveyorHistory()
       .then(setHistory)
+      .catch((err) => {
+        console.error('Failed to load history:', err)
+        setHistory([])
+      })
       .finally(() => setLoading(false))
   }, [])
 
