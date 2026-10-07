@@ -840,7 +840,7 @@ export function SurveyorMission() {
         }
       }));
     }
-  }, [caseData, id, setMissionState]);
+  }, [caseData, layers, id, setMissionState]);
 
   return (
     <div style={{ 
