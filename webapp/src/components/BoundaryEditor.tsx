@@ -139,7 +139,10 @@ export const BoundaryEditor: React.FC<BoundaryEditorProps> = ({
       mapInstance.on('draw.delete', emitEdit);
       mapInstance.on('draw.update', emitEdit);
 
-      mapInstance.on('load', () => setMapLoaded(true));
+      mapInstance.on('load', () => {
+        setMapLoaded(true);
+        mapInstance.resize();
+      });
 
       mapRef.current  = mapInstance;
       drawRef.current = drawInstance;
@@ -149,7 +152,15 @@ export const BoundaryEditor: React.FC<BoundaryEditorProps> = ({
     // The data injection effect will fly the camera to the correct parcel bounds.
     initMap();
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) mapRef.current.resize();
+    });
+    if (mapContainer.current) {
+      resizeObserver.observe(mapContainer.current);
+    }
+
     return () => {
+      resizeObserver.disconnect();
       mapRef.current?.remove();
       mapRef.current  = null;
       drawRef.current = null;

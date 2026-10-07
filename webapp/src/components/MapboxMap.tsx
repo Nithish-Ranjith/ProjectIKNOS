@@ -77,7 +77,10 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = fals
       });
 
       const map = mapRef.current;
-      map.on('load', () => setMapLoaded(true));
+      map.on('load', () => {
+        setMapLoaded(true);
+        map.resize();
+      });
       
       // Wire up reverse geocode on map tap
       map.on('click', async (e) => {
@@ -111,7 +114,15 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({ layers, showAILayer = fals
     // The layers effect will automatically fly the camera to the correct parcel bounds anyway.
     initMap([80.6445, 16.5032]);
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) mapRef.current.resize();
+    });
+    if (mapContainer.current) {
+      resizeObserver.observe(mapContainer.current);
+    }
+
     return () => {
+      resizeObserver.disconnect();
       mapRef.current?.remove();
       mapRef.current = null;
     };

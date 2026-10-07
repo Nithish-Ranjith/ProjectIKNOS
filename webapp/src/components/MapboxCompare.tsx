@@ -60,6 +60,8 @@ export const MapboxCompare: React.FC<MapboxCompareProps> = ({ layers, height = '
     const onLoad = () => {
       loadedCount++
       if (loadedCount === 2 && layers) {
+        map1.resize()
+        map2.resize()
         // --- ADD CADASTRAL TO BASE MAP ---
         if (layers.cadastral) {
           map1.addSource('cadastral', { type: 'geojson', data: layers.cadastral as any })
@@ -105,7 +107,16 @@ export const MapboxCompare: React.FC<MapboxCompareProps> = ({ layers, height = '
     map1.on('load', onLoad)
     map2.on('load', onLoad)
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (map1Ref.current) map1Ref.current.resize()
+      if (map2Ref.current) map2Ref.current.resize()
+    })
+    
+    if (map1Container.current) resizeObserver.observe(map1Container.current)
+    if (map2Container.current) resizeObserver.observe(map2Container.current)
+
     return () => {
+      resizeObserver.disconnect()
       map1.remove()
       map2.remove()
       map1Ref.current = null
