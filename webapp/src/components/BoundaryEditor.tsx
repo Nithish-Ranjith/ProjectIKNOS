@@ -203,7 +203,7 @@ export const BoundaryEditor: React.FC<BoundaryEditorProps> = ({
             const lats = coords.map((c) => c[1]);
             map.fitBounds(
               [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
-              { padding: 60, duration: 800 }
+              { padding: 60, duration: 800, maxZoom: 19 }
             );
           }
         } catch (_) {
