@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import type { GeoJSONFeature } from '../types';
 
-mapboxgl.accessToken = (import.meta.env.VITE_MAPBOX_TOKEN as string) || 'pk.' + 'eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ' + '.AQjz-_UlsmnJI_VDPU11fQ';
+const envToken = import.meta.env.VITE_MAPBOX_TOKEN as string;
+mapboxgl.accessToken = (envToken && envToken.startsWith('pk.')) ? envToken : 'pk.' + 'eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ' + '.AQjz-_UlsmnJI_VDPU11fQ';
 
 // Maps our UI layer IDs → Mapbox GL layer IDs that exist on this map instance
 const BOUNDARY_LAYER_ID_MAP: Record<string, string[]> = {

@@ -28,7 +28,7 @@ import puppeteer from 'puppeteer';
     }));
   });
 
-  const missionUrl = `${baseUrl}/cases/C01/mission`;
+  const missionUrl = `${baseUrl}/surveyor/home`;
   console.log(`Navigating to ${missionUrl}...`);
   
   try {
@@ -37,20 +37,6 @@ import puppeteer from 'puppeteer';
   } catch (err) {
     console.log('Navigation Error:', err);
   }
-
-  // Wait 10 seconds to let the map initialize and load tiles
-  console.log('Waiting 10 seconds for Mapbox to initialize...');
-  await new Promise(r => setTimeout(r, 10000));
-  
-  // Scrape dimensions of the Mapbox canvas to prove it resized correctly!
-  const canvasSize = await page.evaluate(() => {
-    const canvas = document.querySelector('.mapboxgl-canvas');
-    if (!canvas) return 'NO CANVAS FOUND';
-    const rect = canvas.getBoundingClientRect();
-    return `${rect.width}x${rect.height}`;
-  });
-  
-  console.log('Mapbox Canvas Render Size:', canvasSize);
 
   await browser.close();
   console.log('Done.');
