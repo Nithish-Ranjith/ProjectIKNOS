@@ -10,6 +10,7 @@ import styles from './AdminCases.module.css'
 interface Filters {
   status: string
   min_confidence: string
+  trigger_source: string
 }
 
 const KPICard: React.FC<{ label: string; value: string | number; accent?: boolean }> = ({ label, value, accent }) => (
@@ -22,8 +23,8 @@ const KPICard: React.FC<{ label: string; value: string | number; accent?: boolea
 export const AdminCases: React.FC = () => {
   const navigate = useNavigate()
 
-  const [filters, setFilters] = useState<Filters>({ status: '', min_confidence: '' })
-  const [appliedFilters, setAppliedFilters] = useState<Filters>({ status: '', min_confidence: '' })
+  const [filters, setFilters] = useState<Filters>({ status: '', min_confidence: '', trigger_source: '' })
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ status: '', min_confidence: '', trigger_source: '' })
 
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ['admin-stats'],
@@ -35,10 +36,11 @@ export const AdminCases: React.FC = () => {
     queryFn: () => fetchCases({
       status: appliedFilters.status || undefined,
       min_confidence: appliedFilters.min_confidence ? Number(appliedFilters.min_confidence) : undefined,
+      trigger_source: appliedFilters.trigger_source || undefined,
     })
   })
   
-  const cases = (casesRes?.cases || []).filter((c: any) => c.case_id === 'C01')
+  const cases = casesRes?.cases || []
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -46,7 +48,7 @@ export const AdminCases: React.FC = () => {
   }
 
   const applyFilters = () => setAppliedFilters({ ...filters })
-  const clearFilters = () => { setFilters({ status: '', min_confidence: '' }); setAppliedFilters({ status: '', min_confidence: '' }) }
+  const clearFilters = () => { setFilters({ status: '', min_confidence: '', trigger_source: '' }); setAppliedFilters({ status: '', min_confidence: '', trigger_source: '' }) }
 
   return (
     <div className="app-container">
@@ -100,6 +102,11 @@ export const AdminCases: React.FC = () => {
                 <option value="">Any Risk</option>
                 <option value="70">High Risk (≥70)</option>
                 <option value="45">Medium+ Risk (≥45)</option>
+              </select>
+              <select className="form-input" style={{ width: 'auto' }} value={filters.trigger_source} onChange={e => setFilters(f => ({ ...f, trigger_source: e.target.value }))}>
+                <option value="">All Sources</option>
+                <option value="citizen_grievance">Citizen Grievances</option>
+                <option value="routine_survey">Routine Survey</option>
               </select>
               <button className="btn btn-primary" style={{ padding: '0.4rem 0.9rem' }} onClick={applyFilters}>Apply</button>
               <button className="btn btn-outline" style={{ padding: '0.4rem 0.9rem' }} onClick={clearFilters}>Clear</button>

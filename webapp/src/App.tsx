@@ -17,6 +17,7 @@ import { AdminShell }         from './components/layout/AdminShell'
 import { AdminHome }          from './pages/AdminHome'
 import { AdminCases }      from './pages/admin/AdminCases'
 import { AdminCaseDetail } from './pages/admin/AdminCaseDetail'
+import { AdminEvaluation } from './pages/admin/AdminEvaluation'
 import { AdminSettings }   from './pages/admin/AdminSettings'
 import { BrowseMap }       from './pages/BrowseMap'
 import ErrorBoundary from './ErrorBoundary'
@@ -60,6 +61,7 @@ function App() {
             <Route path="/admin/home"         element={<AdminHome />} />
             <Route path="/admin/cases"        element={<AdminCases />} />
             <Route path="/admin/cases/:id"    element={<AdminCaseDetail />} />
+            <Route path="/admin/evaluation"   element={<AdminEvaluation />} />
             <Route path="/admin/map"          element={<BrowseMap />} />
             <Route path="/admin/records"  element={<div style={{padding:'3rem',textAlign:'center',opacity:.5}}>Records module — coming soon</div>} />
             <Route path="/admin/users"    element={<div style={{padding:'3rem',textAlign:'center',opacity:.5}}>User management — coming soon</div>} />

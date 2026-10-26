@@ -132,7 +132,12 @@ export const SentinelTimelapse: React.FC<Props> = ({ parcelId }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--color-text-secondary)' }}>SATELLITE TIMELAPSE</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--color-text-secondary)' }}>SATELLITE TIMELAPSE</div>
+          <div style={{ fontSize: '0.55rem', fontWeight: 600, padding: '2px 6px', background: 'rgba(255,255,255,0.1)', color: '#a0a0a0', borderRadius: '4px', textTransform: 'uppercase' }}>
+            Simulated (Pending Sentinel Hub Quota)
+          </div>
+        </div>
         
         {/* Toggle NDVI / SAR */}
         <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: 'var(--radius-pill)', padding: '2px', border: '1px solid var(--color-border)' }}>

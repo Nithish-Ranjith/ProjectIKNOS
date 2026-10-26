@@ -203,11 +203,11 @@ def estimate_boundary_from_ortho(
                 "type": "Feature",
                 "geometry": best_geojson,
                 "properties": {
-                    "source": "spectral-edge-detection",
+                    "source": "spectral-edge-detection (circular-seeded)",
                     "provenance": PROVENANCE,
                     "model_version": MODEL_VERSION,
                     "confidence": round(confidence, 4),
-                    "confidence_semantics": "normalised_intra_parcel_l_channel_contrast",
+                    "confidence_semantics": "normalised_intra_parcel_l_channel_contrast (circular logic: seeded by cadastral polygon)",
                     "input_crs": str(tif_crs),
                     "input_gsd": float(src.res[0]),
                     "grabcut_iterations": 5,

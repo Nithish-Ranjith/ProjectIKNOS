@@ -21,14 +21,11 @@ webapp/.env
 backend/.env
 
 # Large files and datasets
-models/
 data/
 data_extracted/
 archives/
 backend/backend/uploads/
 *.zip
-*.pth
-*.onnx
 *.csv
 
 .env

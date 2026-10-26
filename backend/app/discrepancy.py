@@ -133,9 +133,11 @@ def interpret_discrepancy(metrics: models.DiscrepancyMetrics, parcel_area_sqm: f
     relative_shift = shift_above_noise / char_length if char_length else 0
 
     severity = "LOW"
-    if metrics.area_diff_pct > 15 or relative_shift > 0.05:
+    # ML model IoU is ~55%, meaning area differences up to 45% can purely be model error.
+    # We set the HIGH discrepancy flag above this error band.
+    if metrics.area_diff_pct > 50 or relative_shift > 0.05:
         severity = "HIGH"
-    elif metrics.area_diff_pct > 5 or relative_shift > 0.01:
+    elif metrics.area_diff_pct > 35 or relative_shift > 0.03:
         severity = "MEDIUM"
 
     return {

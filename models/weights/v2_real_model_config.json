@@ -1,0 +1,24 @@
+{
+  "encoder": "efficientnet-b3",
+  "input_size": 512,
+  "in_channels": 4,
+  "channel_layout": "RGB (channels 0-2) + centroid Gaussian heatmap (channel 3)",
+  "heatmap_sigma_px": 60,
+  "normalize_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "normalize_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "threshold": 0.5,
+  "output": "single-channel logits; apply sigmoid + threshold at 0.5; use cv2.morphologyEx(MORPH_GRADIENT) to extract boundary line",
+  "centroid_source_at_inference": "known cadastral centroid of the target parcel reprojected into tile pixel coordinates",
+  "best_val_iou": 0.5523138175561697,
+  "baseline_iou": 0.2530534015692222,
+  "training_data": "real APSAC Guntur cadastral parcels (1000 tiles, 512x512)",
+  "onnx_path": "/Users/nithishranjith/AndroidStudioProjects/ProjectIKNOS/models/weights/v2_real_model.onnx"
+}

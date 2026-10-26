@@ -4,12 +4,14 @@ import { LayoutDashboard, Folder, Settings, LogOut, Map } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Toaster } from 'sonner';
 import { ThemeToggle } from '../ThemeToggle';
+import { GuidedTour } from '../GuidedTour';
 
 const navItems = [
-  { id: 'home',     label: 'Overview',   icon: <LayoutDashboard size={16} /> },
-  { id: 'cases',    label: 'Case Queue', icon: <Folder size={16} /> },
-  { id: 'map',      label: 'Browse Map', icon: <Map size={16} /> },
-  { id: 'settings', label: 'Settings',   icon: <Settings size={16} /> },
+  { id: 'home',       label: 'Overview',       icon: <LayoutDashboard size={16} /> },
+  { id: 'cases',      label: 'Case Queue',     icon: <Folder size={16} /> },
+  { id: 'evaluation', label: 'AI Evaluation',  icon: <LayoutDashboard size={16} /> },
+  { id: 'map',        label: 'Browse Map',     icon: <Map size={16} /> },
+  { id: 'settings',   label: 'Settings',       icon: <Settings size={16} /> },
 ];
 
 export function AdminShell() {
@@ -36,6 +38,7 @@ export function AdminShell() {
   return (
     <div className="app-layout">
       <Toaster theme={toasterTheme} position="top-center" />
+      <GuidedTour />
       {/* GLOBAL SIDE NAV */}
       <nav className="app-sidebar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '32px', paddingLeft: '8px' }}>

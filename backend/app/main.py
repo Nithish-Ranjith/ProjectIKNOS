@@ -3,7 +3,7 @@ backend/app/main.py — IKNOS MVP API
 
 Added full role-gating, auth, and missing endpoints.
 """
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -21,7 +21,7 @@ from . import models, schemas, auth
 from .confidence import compute_confidence
 from . import lock_service, audit_service, mission_service, field_verification, record_update_service
 from .spatial import wms_service
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from .decision_routes import router as decision_router
 
 app = FastAPI(title="IKNOS MVP API")
@@ -43,6 +43,14 @@ os.makedirs("backend/uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="backend/uploads"), name="uploads")
 
 app.include_router(decision_router)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error on %s %s: %s", request.method, request.url, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"}
+    )
 
 
 @app.on_event("startup")
@@ -296,14 +304,26 @@ def get_dashboard_stats(
 @app.get("/cases", response_model=List[schemas.CaseOut])
 def list_cases(
     status: Optional[str] = None,
+    trigger_source: Optional[str] = None,
+    min_confidence: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role == models.UserRole.CUSTOMER:
         raise HTTPException(403, "Customers cannot list all cases")
     stmt = select(models.Case).order_by(models.Case.confidence_score.desc())
-    if status:
+    if status and status != "undefined":
         stmt = stmt.where(models.Case.status == status)
+    if min_confidence and min_confidence != "undefined":
+        try:
+            val = float(min_confidence)
+            stmt = stmt.where(models.Case.confidence_score >= val)
+        except ValueError:
+            pass
+    if trigger_source and trigger_source != "undefined":
+        stmt = stmt.where(
+            models.Case.case_data.op("->>")("trigger_source") == trigger_source
+        )
     return db.execute(stmt).scalars().all()
 
 @app.get("/surveyor/assignments")
@@ -780,8 +800,29 @@ def get_case_geometry(
     auth.assert_parcel_access(case.parcel_id, current_user)
     cd = case.case_data or {}
     cadastral_geom = boundary_repo.cadastral_geometry(db, case.parcel_id)
-    candidate = boundary_repo.latest_candidate(db, case_id)
+    candidates = db.query(models.BoundaryCandidate).filter(models.BoundaryCandidate.case_id == case_id).all()
     metrics = boundary_repo.latest_metrics(db, case_id)
+    
+    drone_cand = next((c for c in candidates if c.dataset_label == boundary_repo.PROVENANCE_DRONE), None)
+    ai_cand = next((c for c in sorted(candidates, key=lambda x: x.computed_at or datetime.min, reverse=True) if c.dataset_label != boundary_repo.PROVENANCE_DRONE), None)
+    
+    def format_candidate(c):
+        if not c: return None
+        conf = float(c.confidence_score) if c.confidence_score is not None else None
+        prov = boundary_repo.provenance_of(c)
+        return {
+            "type": "Feature",
+            "geometry": c.boundary_geojson,
+            "properties": {
+                "layer": prov,
+                "provenance": prov,
+                "model_version": c.model_version,
+                "confidence": conf,
+                "low_confidence": (prov == boundary_repo.PROVENANCE_REAL and conf is not None and conf < boundary_repo.MIN_USABLE_MODEL_CONFIDENCE),
+                "computed_at": c.computed_at.isoformat() if c.computed_at else None,
+                "candidate_id": c.candidate_id,
+            }
+        }
 
     return {
         "cadastral": {
@@ -789,20 +830,8 @@ def get_case_geometry(
             "geometry": cadastral_geom,
             "properties": {"parcel_id": case.parcel_id, "layer": "OLD_CADASTRAL"}
         } if cadastral_geom else None,
-        "ai_boundary": {
-            "type": "Feature",
-            "geometry": candidate["geometry"],
-            "properties": {
-                "layer": "AI_CANDIDATE",
-                "provenance": candidate["provenance"],
-                "model_version": candidate["model_version"],
-                "confidence": candidate["confidence"],
-                "low_confidence": candidate["low_confidence"],
-                "computed_at": candidate["computed_at"],
-                "candidate_id": candidate["candidate_id"],
-            }
-        } if candidate else None,
-        "drone_coverage": None,
+        "ai_boundary": format_candidate(ai_cand),
+        "drone_coverage": format_candidate(drone_cand),
         # Only COMPUTED metrics are returned here; None means "no comparison has been run".
         "discrepancy": metrics,
         "pipeline": cd.get("boundary_pipeline"),
@@ -1013,6 +1042,48 @@ def submit_field_verification(
         body.verification_status, fs, body.lat, body.lon
     )
     return {"verification_id": ver.verification_id}
+
+@app.post("/cases/{case_id}/drone-boundary")
+def upload_drone_boundary(
+    case_id: str,
+    body: schemas.DroneBoundaryUpload,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_role(models.UserRole.SURVEYOR_DRONE, models.UserRole.SURVEYOR_FIELD))
+):
+    case = db.get(models.Case, case_id)
+    if not case: 
+        raise HTTPException(404, "Case not found")
+    
+    # Ensure a valid mission_id exists. If not, fallback to an existing mission for the case, or create a dummy one.
+    mission = db.get(models.Mission, body.mission_id)
+    actual_mission_id = body.mission_id
+    if not mission:
+        existing_mission = db.query(models.Mission).filter(models.Mission.case_id == case_id).first()
+        if existing_mission:
+            actual_mission_id = existing_mission.mission_id
+        else:
+            new_mission = models.Mission(
+                mission_id=actual_mission_id,
+                case_id=case_id,
+                surveyor_id=current_user.user_id,
+                status="completed"
+            )
+            db.add(new_mission)
+            db.commit()
+    
+    out = boundary_repo.record_candidate(
+        db, case, actual_mission_id, body.geometry, 
+        boundary_repo.PROVENANCE_DRONE, 
+        model_version="DRONE_TRUTH_V1", 
+        confidence=1.0  # Ground truth
+    )
+    
+    if out.get("status") != "SUCCESS":
+        raise HTTPException(400, out.get("note", "Failed to ingest drone boundary"))
+        
+    # Since we have a drone-verified boundary, confidence logic is evaluated with RTK_FIX quality
+    boundary_repo.fuse_case_evidence(db, case, positioning_quality="RTK_FIX")
+    return {"status": "success"}
 
 # --- Audit ---
 

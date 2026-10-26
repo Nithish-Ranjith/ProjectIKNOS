@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { fetchCase, fetchEvidence, fetchGeometryLayers, submitFieldVerification } from '../../services/api'
+import { fetchCase, fetchEvidence, fetchGeometryLayers, submitFieldVerification, uploadDroneBoundary } from '../../services/api'
 import type { GeoJSONFeature } from '../../types'
 import { MapboxMap } from '../../components/MapboxMap'
 import { SentinelTimelapse } from '../../components/SentinelTimelapse'
@@ -11,7 +11,7 @@ export const SurveyorFieldVisit: React.FC = () => {
   const { id: caseId } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const [editedBoundary, _setEditedBoundary] = useState<GeoJSONFeature | null>(null)
+  const [editedBoundary, setEditedBoundary] = useState<GeoJSONFeature | null>(null)
   const [fullMap, setFullMap] = useState(false)
   const [activePanel, setActivePanel] = useState<'details' | 'sentinel' | 'neighbors'>('details')
 
@@ -37,6 +37,37 @@ export const SurveyorFieldVisit: React.FC = () => {
 
   const { c, bundle, layers } = data
 
+  const handleSimulateEdit = () => {
+    const baseLayer = layers.ai_boundary || layers.cadastral
+    if (!baseLayer || !baseLayer.geometry || baseLayer.geometry.type !== 'Polygon') {
+      alert("No valid polygon base layer to edit.");
+      return;
+    }
+    const coords = (baseLayer.geometry as any).coordinates
+    if (!coords || coords.length === 0) return
+    
+    // Perturb the first polygon ring slightly
+    const ring = coords[0]
+    const newRing = ring.map((pt: number[], i: number) => {
+      // Don't perturb the last point, it must match the first point to close the ring
+      if (i === ring.length - 1) return pt
+      // Perturb by roughly 10 meters (approx 0.0001 deg)
+      return [pt[0] + (Math.random() - 0.5) * 0.00015, pt[1] + (Math.random() - 0.5) * 0.00015]
+    })
+    newRing[newRing.length - 1] = [...newRing[0]] // Ensure closed polygon
+
+    setEditedBoundary({
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [newRing, ...coords.slice(1)] },
+      properties: { layer: 'DRONE_VERIFIED' }
+    })
+  }
+
+  const activeLayers = { ...layers }
+  if (editedBoundary) {
+    activeLayers.drone_coverage = editedBoundary
+  }
+
   return (
     <div className={styles.container}>
       <header className={styles.topbar}>
@@ -52,6 +83,7 @@ export const SurveyorFieldVisit: React.FC = () => {
           <button className="btn btn-ghost" onClick={() => setFullMap(f => !f)} style={{ fontSize: '0.75rem', padding: '5px 8px' }}>
             {fullMap ? '⊟ PANEL' : '⊞ FULL MAP'}
           </button>
+          <button className="btn btn-outline" style={{ fontSize: '0.75rem', padding: '5px 10px' }} onClick={handleSimulateEdit}>SIMULATE EDIT</button>
           <button className="btn btn-outline" style={{ fontSize: '0.75rem', padding: '5px 10px' }}>SAVE DRAFT</button>
           <button
             className="btn btn-primary"
@@ -59,13 +91,19 @@ export const SurveyorFieldVisit: React.FC = () => {
             onClick={async () => {
               try {
                 if (!caseId) return;
+                
+                // If there's an edited boundary, upload it as the Drone Boundary (Layer 3)
+                if (editedBoundary) {
+                  await uploadDroneBoundary(caseId, editedBoundary.geometry, 'FIELD_EDIT_' + Date.now())
+                }
+                
                 await submitFieldVerification(caseId, {
                   discrepancy_confirmed: true,
-                  findings: 'Field visit conducted and discrepancies noted.',
+                  findings: editedBoundary ? 'Boundary was manually edited during field verification.' : 'Field visit conducted and discrepancies noted.',
                   photo_uris: [],
                   submitted_by: 'surveyor'
                 });
-                alert('Field verification submitted successfully!');
+                alert(editedBoundary ? 'Drone boundary (Layer 3) uploaded and verification confirmed!' : 'Field verification submitted successfully!');
                 navigate('/surveyor');
               } catch (err: any) {
                 alert(`Failed to submit: ${err.message}`);
@@ -79,7 +117,7 @@ export const SurveyorFieldVisit: React.FC = () => {
 
       <div className={styles.mainArea}>
         <div className={styles.mapArea}>
-          <MapboxMap layers={layers} showAILayer={true} />
+          <MapboxMap layers={activeLayers} showAILayer={true} />
 
           <div className={styles.statsBanner}>
             <div className={styles.statItem}>

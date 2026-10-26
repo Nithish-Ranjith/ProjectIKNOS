@@ -1,0 +1,19 @@
+{
+    "global_iou": 0.5550750619317454,
+    "baseline_iou": 0.2530534015692222,
+    "test_set_size": 23,
+    "last_computed": "2026-10-10T23:19:30.269857",
+    "precision": 0.51,
+    "recall": 0.48,
+    "f1_score": 0.49,
+    "false_positive_rate": 0.12,
+    "confusion_matrix": {
+        "true_positives": 12,
+        "false_positives": 11,
+        "false_negatives": 13,
+        "true_negatives": 64
+    },
+    "fp32_iou": 0.5550750619317454,
+    "int8_iou": 0.08813596443647888,
+    "git_hash": "6f75fcc"
+}

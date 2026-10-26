@@ -1,49 +1,49 @@
-import React, { useEffect, useRef, useState } from 'react'
-import mapboxgl from 'mapbox-gl'
-import type { GeometryLayers } from '../types'
-
-mapboxgl.accessToken = (import.meta.env.VITE_MAPBOX_TOKEN as string) || 'pk.' + 'eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ' + '.AQjz-_UlsmnJI_VDPU11fQ';
+import React, { useEffect, useRef, useState } from 'react';
+import * as maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import type { GeometryLayers } from '../types';
+import { getSatelliteStyle } from '../services/mapConfig';
 
 interface MapboxCompareProps {
-  layers: GeometryLayers | null
-  height?: string
+  layers: GeometryLayers | null;
+  height?: string;
 }
 
 export const MapboxCompare: React.FC<MapboxCompareProps> = ({ layers, height = '350px' }) => {
-  const map1Container = useRef<HTMLDivElement>(null)
-  const map2Container = useRef<HTMLDivElement>(null)
+  const map1Container = useRef<HTMLDivElement>(null);
+  const map2Container = useRef<HTMLDivElement>(null);
   
-  const map1Ref = useRef<mapboxgl.Map | null>(null)
-  const map2Ref = useRef<mapboxgl.Map | null>(null)
+  const map1Ref = useRef<maplibregl.Map | null>(null);
+  const map2Ref = useRef<maplibregl.Map | null>(null);
   
-  const [sliderPos, setSliderPos] = useState(50)
+  const [sliderPos, setSliderPos] = useState(50);
 
   useEffect(() => {
-    if (!map1Container.current || !map2Container.current || !mapboxgl.accessToken || map1Ref.current) return
+    if (!map1Container.current || !map2Container.current || map1Ref.current) return;
 
-    const center: [number, number] = [80.6445, 16.5032]
+    const center: [number, number] = [80.648, 16.506];
 
     // Base map (Right side / Cadastral)
-    map1Ref.current = new mapboxgl.Map({
+    map1Ref.current = new maplibregl.Map({
       container: map1Container.current,
-      style: 'mapbox://styles/mapbox/satellite-streets-v12',
+      style: getSatelliteStyle(),
       center,
-      zoom: 15.5,
+      zoom: 16,
       pitch: 0, 
-    })
+    });
 
     // Top map (Left side / AI Boundary)
-    map2Ref.current = new mapboxgl.Map({
+    map2Ref.current = new maplibregl.Map({
       container: map2Container.current,
-      style: 'mapbox://styles/mapbox/satellite-streets-v12',
+      style: getSatelliteStyle(),
       center,
-      zoom: 15.5,
+      zoom: 16,
       pitch: 0,
       interactive: false // Only base map is interactive
-    })
+    });
 
-    const map1 = map1Ref.current
-    const map2 = map2Ref.current
+    const map1 = map1Ref.current;
+    const map2 = map2Ref.current;
 
     // Sync maps
     map1.on('move', () => {
@@ -52,46 +52,53 @@ export const MapboxCompare: React.FC<MapboxCompareProps> = ({ layers, height = '
         zoom: map1.getZoom(),
         bearing: map1.getBearing(),
         pitch: map1.getPitch()
-      })
-    })
+      });
+    });
 
     // Wait for both to load
-    let loadedCount = 0
+    let loadedCount = 0;
     const onLoad = () => {
-      loadedCount++
+      loadedCount++;
       if (loadedCount === 2 && layers) {
-        map1.resize()
-        map2.resize()
+        map1.resize();
+        map2.resize();
         // --- ADD CADASTRAL TO BASE MAP ---
         if (layers.cadastral) {
-          map1.addSource('cadastral', { type: 'geojson', data: layers.cadastral as any })
+          if (map1.getLayer('cadastral-fill')) map1.removeLayer('cadastral-fill');
+          if (map1.getLayer('cadastral-outline')) map1.removeLayer('cadastral-outline');
+          if (map1.getSource('cadastral')) map1.removeSource('cadastral');
+
+          map1.addSource('cadastral', { type: 'geojson', data: layers.cadastral as any });
           map1.addLayer({
             id: 'cadastral-fill', type: 'fill', source: 'cadastral',
             paint: { 'fill-color': '#6B8F71', 'fill-opacity': 0.3 }
-          })
+          });
           map1.addLayer({
             id: 'cadastral-outline', type: 'line', source: 'cadastral',
             paint: { 'line-color': '#6B8F71', 'line-width': 3 }
-          })
+          });
           
           try {
-            const coords = (layers.cadastral.geometry.coordinates as number[][][])[0]
+            const coords = (layers.cadastral.geometry.coordinates as number[][][])[0];
             if (coords && coords.length > 0) {
-              const lons = coords.map(c => c[0])
-              const lats = coords.map(c => c[1])
-              const bounds = new mapboxgl.LngLatBounds(
+              const lons = coords.map(c => c[0]);
+              const lats = coords.map(c => c[1]);
+              const bounds = new maplibregl.LngLatBounds(
                 [Math.min(...lons), Math.min(...lats)],
                 [Math.max(...lons), Math.max(...lats)]
-              )
-              map1.fitBounds(bounds, { padding: 50, duration: 0 })
-              map2.fitBounds(bounds, { padding: 50, duration: 0 })
+              );
+              map1.fitBounds(bounds, { padding: 50, duration: 0 });
+              map2.fitBounds(bounds, { padding: 50, duration: 0 });
             }
-          } catch (e) {}
+          } catch {}
         }
 
         // --- ADD AI BOUNDARY TO TOP MAP ---
         if (layers.ai_boundary) {
-          map2.addSource('ai-boundary', { type: 'geojson', data: layers.ai_boundary as any })
+          if (map2.getLayer('ai-outline')) map2.removeLayer('ai-outline');
+          if (map2.getSource('ai-boundary')) map2.removeSource('ai-boundary');
+
+          map2.addSource('ai-boundary', { type: 'geojson', data: layers.ai_boundary as any });
           map2.addLayer({
             id: 'ai-outline', type: 'line', source: 'ai-boundary',
             paint: {
@@ -99,34 +106,33 @@ export const MapboxCompare: React.FC<MapboxCompareProps> = ({ layers, height = '
               'line-width': 3,
               'line-dasharray': [2, 2]
             }
-          })
+          });
         }
       }
-    }
+    };
 
-    map1.on('load', onLoad)
-    map2.on('load', onLoad)
+    map1.on('load', onLoad);
+    map2.on('load', onLoad);
 
     const resizeObserver = new ResizeObserver(() => {
-      if (map1Ref.current) map1Ref.current.resize()
-      if (map2Ref.current) map2Ref.current.resize()
-    })
+      if (map1Ref.current) map1Ref.current.resize();
+      if (map2Ref.current) map2Ref.current.resize();
+    });
     
-    if (map1Container.current) resizeObserver.observe(map1Container.current)
-    if (map2Container.current) resizeObserver.observe(map2Container.current)
+    if (map1Container.current) resizeObserver.observe(map1Container.current);
+    if (map2Container.current) resizeObserver.observe(map2Container.current);
 
     return () => {
-      resizeObserver.disconnect()
-      map1.remove()
-      map2.remove()
-      map1Ref.current = null
-      map2Ref.current = null
-    }
-  }, [layers])
+      resizeObserver.disconnect();
+      map1.remove();
+      map2.remove();
+      map1Ref.current = null;
+      map2Ref.current = null;
+    };
+  }, [layers]);
 
   return (
     <div style={{ position: 'relative', height, width: '100%', borderRadius: '8px', overflow: 'hidden', background: '#000' }}>
-      
       {/* Base Map (Cadastral) */}
       <div ref={map1Container} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
       
@@ -177,5 +183,6 @@ export const MapboxCompare: React.FC<MapboxCompareProps> = ({ layers, height = '
         <span style={{ color: '#4a7c59' }}>Official Record (RoR) →</span>
       </div>
     </div>
-  )
-}
+  );
+};
+export default MapboxCompare;

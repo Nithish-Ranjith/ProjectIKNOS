@@ -16,9 +16,8 @@ export const SurveyorHome: React.FC = () => {
   })
 
   const filtered = assignments.filter((a: any) =>
-    (a.parcel_id.toLowerCase().includes(search.toLowerCase()) ||
-    (a.village || '').toLowerCase().includes(search.toLowerCase())) &&
-    a.case_id === 'C01'
+    a.parcel_id.toLowerCase().includes(search.toLowerCase()) ||
+    (a.village || '').toLowerCase().includes(search.toLowerCase())
   )
 
   return (

@@ -20,7 +20,7 @@ os.environ.setdefault("IKNOS_DEMO", "1")
 # ── Mapbox config ─────────────────────────────────────────────────────────────
 MAPBOX_TOKEN = (
     os.environ.get("MAPBOX_ACCESS_TOKEN") or
-    "YOUR_MAPBOX_TOKEN_HERE"
+    ""
 )
 ZOOM = 18          # ~0.6 m/px at equator; fine enough for field boundary detection
 TILE_PX = 256

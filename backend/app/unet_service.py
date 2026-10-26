@@ -36,7 +36,7 @@ def get_ort_session() -> ort.InferenceSession:
     if _SESSION is None:
         if not _ORT_AVAILABLE:
             raise ImportError("onnxruntime is not installed")
-        model_path = Path(__file__).parent.parent.parent / "models" / "weights" / "v2_real_model_quantized.onnx"
+        model_path = Path(__file__).parent.parent.parent / "models" / "weights" / "v2_real_model.onnx"
         if not model_path.exists():
             # Fallback to the original real model or v2 model
             model_path = Path(__file__).parent.parent.parent / "models" / "weights" / "v2_real_model.onnx"
@@ -208,14 +208,18 @@ def process_orthophoto_for_parcel(tif_path: str, cadastral_geojson: dict) -> Opt
             final_prob = np.divide(accum_prob, weight_map, out=np.zeros_like(accum_prob), where=weight_map!=0)
             
             # ── Adaptive thresholding (Otsu on probability map) ─────────────
-            # Hard threshold (> 0.5) fails when the model is applied to imagery
-            # outside its training distribution (domain shift). Otsu's method
-            # finds the natural foreground/background split in the probability
-            # histogram, which works even when absolute logit values are low.
             prob_u8 = (final_prob * 255).astype(np.uint8)
             otsu_thresh, mask = cv2.threshold(prob_u8, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             otsu_prob_thresh = otsu_thresh / 255.0
-            logger.info(f"Otsu threshold: {otsu_prob_thresh:.4f}  (prob max={final_prob.max():.4f}  mean={final_prob.mean():.5f})")
+            
+            prob_max = final_prob.max()
+            logger.info(f"Otsu threshold: {otsu_prob_thresh:.4f}  (prob max={prob_max:.4f}  mean={final_prob.mean():.5f})")
+            
+            # Confidence Gate: If max probability is low, the model sees nothing.
+            # (Calibrated against test set where in-distribution confident predictions are >0.98)
+            if prob_max < 0.90:
+                logger.warning(f"Confidence gate triggered: max probability ({prob_max:.4f}) is too low.")
+                return None
             
             # Morphological cleanup: close small holes, remove tiny specks
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
@@ -225,10 +229,8 @@ def process_orthophoto_for_parcel(tif_path: str, cadastral_geojson: dict) -> Opt
             # Reject if the entire image is thresholded as foreground (degenerate case)
             fg_frac = mask.sum() / mask.size
             if fg_frac > 0.85 or mask.sum() == 0:
-                # Fall back to top-5% percentile threshold
-                p95 = np.percentile(final_prob, 95)
-                mask = (final_prob >= p95).astype(np.uint8)
-                logger.info(f"Otsu degenerate (fg={fg_frac:.2%}); using p95={p95:.4f} fallback")
+                logger.warning(f"Degenerate mask detected (fg={fg_frac:.2%}). Returning None.")
+                return None
             
             # 7. Vectorize and Georeference
             win_transform = src.window_transform(window)

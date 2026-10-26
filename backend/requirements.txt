@@ -25,6 +25,7 @@ torchvision>=0.18.0
 Pillow==10.3.0
 numpy==1.26.4
 opencv-python-headless==4.9.0.80
+onnxruntime>=1.16.0
 
 # Google Earth Engine (BQ-03 — requires GEE_PROJECT env var + credentials)
 # Uncomment when GEE project is provisioned:

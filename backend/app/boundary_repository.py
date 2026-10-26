@@ -28,6 +28,7 @@ from . import models, spatial_service
 PROVENANCE_REAL = "REAL_INFERENCE"
 PROVENANCE_SIMULATED = "SIMULATED_PRECOMPUTED"
 PROVENANCE_SPECTRAL = "SPECTRAL_EDGE_DETECTION"
+PROVENANCE_DRONE = "DRONE_VERIFIED"
 
 # Domain policy: below this model-output statistic a prediction is flagged
 # LOW_CONFIDENCE and must be treated as unusable evidence until a human reviews it.
@@ -39,6 +40,8 @@ def provenance_of(candidate: models.BoundaryCandidate) -> str:
         return PROVENANCE_SIMULATED
     if candidate.dataset_label == PROVENANCE_SPECTRAL:
         return PROVENANCE_SPECTRAL
+    if candidate.dataset_label == PROVENANCE_DRONE:
+        return PROVENANCE_DRONE
     return PROVENANCE_REAL
 
 
@@ -51,14 +54,17 @@ def cadastral_geometry(db: Session, parcel_id: str) -> Optional[dict]:
 
 
 def latest_candidate(db: Session, case_id: str) -> Optional[dict]:
-    row = (
+    rows = (
         db.query(models.BoundaryCandidate)
         .filter(models.BoundaryCandidate.case_id == case_id)
         .order_by(models.BoundaryCandidate.computed_at.desc())
-        .first()
+        .all()
     )
-    if not row:
+    if not rows:
         return None
+    
+    drone = next((r for r in rows if r.dataset_label == PROVENANCE_DRONE), None)
+    row = drone if drone else rows[0]
     conf = float(row.confidence_score) if row.confidence_score is not None else None
     prov = provenance_of(row)
     return {
@@ -141,7 +147,7 @@ def record_candidate(
         confidence_score=confidence,
         model_version=model_version,
         dataset_label=provenance if provenance in (
-            PROVENANCE_SIMULATED, PROVENANCE_SPECTRAL
+            PROVENANCE_SIMULATED, PROVENANCE_SPECTRAL, PROVENANCE_DRONE
         ) else "TRANSFER_LEARNED_UNVALIDATED",
     )
     db.add(cand)

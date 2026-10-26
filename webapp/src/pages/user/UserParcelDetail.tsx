@@ -70,7 +70,7 @@ export const UserParcelDetail: React.FC = () => {
           {status === 'open' && (
             <div className={`${styles.statusCard} ${styles.statusOpen}`}>
               <h4 className={`${styles.statusTitle} ${styles.statusTitleOpen}`}><AlertTriangle size={18} /> Under Review</h4>
-              <p className={styles.statusDesc}>Our AI has detected a potential discrepancy between the 1950s cadastral record and modern drone satellite boundaries. An official surveyor has been notified.</p>
+              <p className={styles.statusDesc}>Our AI has detected a potential discrepancy between the 1950s cadastral record and modern drone satellite boundaries (Model error band ±45%). An official surveyor has been notified.</p>
             </div>
           )}
           

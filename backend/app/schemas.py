@@ -113,6 +113,10 @@ class FieldVerificationIn(BaseModel):
     lat: Optional[float] = None
     lon: Optional[float] = None
 
+class DroneBoundaryUpload(BaseModel):
+    geometry: Dict[str, Any]
+    mission_id: str
+
 # --- Audit ---
 class AuditOut(BaseModel):
     audit_id: str

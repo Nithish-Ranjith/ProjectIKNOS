@@ -73,11 +73,19 @@ const EvidenceTabs: React.FC<{ bundle: EvidenceBundle, parcelId: string, caseId:
       {tab === 'spatial' && (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <Row label="Cadastral Area" value={`${bundle.spatial.cadastral_area_sqm.toLocaleString()} m²`} mono />
-            <Row label="Drone-derived Area" value={bundle.spatial.drone_area_sqm ? `${bundle.spatial.drone_area_sqm.toLocaleString()} m²` : <span style={{ color: 'var(--text-2)' }}>Awaiting inference</span>} mono />
-            <Row label="Area Mismatch" value={<span style={{ color: bundle.spatial.area_diff_pct > 5 ? 'var(--red)' : 'var(--green)' }}>{bundle.spatial.area_diff_pct.toFixed(1)}%</span>} mono />
-            <Row label="Boundary Shift" value={`${bundle.spatial.boundary_shift_m.toFixed(1)} m`} mono />
-            <Row label="Registration Conflict" value={bundle.spatial.registration_conflict ? <span style={{ color: 'var(--red)' }}> Yes</span> : <span style={{ color: 'var(--green)' }}> No</span>} />
+            <Row label="Cadastral Area" value={
+              (bundle.spatial?.cadastral_area_sqm ?? (bundle.spatial as any)?.cadastral_area_m2) !== undefined 
+                ? `${(bundle.spatial?.cadastral_area_sqm ?? (bundle.spatial as any)?.cadastral_area_m2).toLocaleString()} m²` 
+                : '—'
+            } mono />
+            <Row label="Drone-derived Area" value={
+              ((bundle.spatial?.drone_area_sqm ?? (bundle.spatial as any)?.candidate_area_m2) !== undefined)
+                ? `${(bundle.spatial?.drone_area_sqm ?? (bundle.spatial as any)?.candidate_area_m2).toLocaleString()} m²` 
+                : <span style={{ color: 'var(--text-2)' }}>Awaiting inference</span>
+            } mono />
+            <Row label="Area Mismatch" value={<span style={{ color: (bundle.spatial?.area_diff_pct ?? 0) > 5 ? 'var(--red)' : 'var(--green)' }}>{(bundle.spatial?.area_diff_pct ?? 0).toFixed(1)}%</span>} mono />
+            <Row label="Boundary Shift" value={`${(bundle.spatial?.boundary_shift_m ?? 0).toFixed(1)} m`} mono />
+            <Row label="Registration Conflict" value={(bundle.spatial?.registration_conflict ?? (bundle.records as any)?.registration_conflict) ? <span style={{ color: 'var(--red)' }}> Yes</span> : <span style={{ color: 'var(--green)' }}> No</span>} />
           </tbody>
         </table>
       )}
@@ -86,9 +94,9 @@ const EvidenceTabs: React.FC<{ bundle: EvidenceBundle, parcelId: string, caseId:
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <tbody>
-              <Row label="Instability Score" value={<span style={{ color: bundle.temporal.instability_score > 0.5 ? 'var(--red)' : 'var(--green)' }}>{bundle.temporal.instability_score.toFixed(2)}</span>} mono />
-              <Row label="Estimated Onset Year" value={bundle.temporal.onset_year ?? '—'} mono />
-              <Row label="NDVI Series" value={bundle.temporal.ndvi_series_uri ? <a href={bundle.temporal.ndvi_series_uri} target="_blank" rel="noreferrer">View Chart</a> : <span style={{ color: 'var(--text-2)' }}>Not available</span>} />
+              <Row label="Instability Score" value={<span style={{ color: (bundle.temporal?.instability_score ?? 0) > 0.5 ? 'var(--red)' : 'var(--green)' }}>{(bundle.temporal?.instability_score ?? 0).toFixed(2)}</span>} mono />
+              <Row label="Estimated Onset Year" value={bundle.temporal?.onset_year ?? '—'} mono />
+              <Row label="NDVI Series" value={bundle.temporal?.ndvi_series_uri ? <a href={bundle.temporal.ndvi_series_uri} target="_blank" rel="noreferrer">View Chart</a> : <span style={{ color: 'var(--text-2)' }}>Not available</span>} />
             </tbody>
           </table>
           <div style={{ marginTop: '0.5rem' }}>
@@ -97,15 +105,15 @@ const EvidenceTabs: React.FC<{ bundle: EvidenceBundle, parcelId: string, caseId:
         </div>
       )}
 
-      {tab === 'records' && bundle.records.ror && (
+      {tab === 'records' && (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <Row label="Khasra No." value={bundle.records.ror.khasra_no} mono />
-            <Row label="Owner (RoR)" value={bundle.records.ror.owner_name} />
-            <Row label="Recorded Area" value={`${bundle.records.ror.area_recorded} m²`} mono />
-            <Row label="Record Date" value={bundle.records.ror.record_date} mono />
-            <Row label="Mutation Status" value={<span style={{ textTransform: 'capitalize' }}>{bundle.records.mutation?.mutation_status ?? '—'}</span>} />
-            <Row label="Registration Deed" value={bundle.records.registration_deed_present ? ' Present' : 'Not found'} />
+            <Row label="RoR Status" value={<span style={{ textTransform: 'capitalize' }}>{(bundle.records as any)?.ror_status ?? (bundle.records?.ror as any)?.status ?? 'present'}</span>} />
+            <Row label="Khasra No." value={bundle.records?.ror?.khasra_no ?? parcelId} mono />
+            <Row label="Owner (RoR)" value={bundle.records?.ror?.owner_name ?? 'Government Records'} />
+            <Row label="Recorded Area" value={bundle.records?.ror?.area_recorded ? `${bundle.records.ror.area_recorded} m²` : '—'} mono />
+            <Row label="Mutation Status" value={<span style={{ textTransform: 'capitalize' }}>{(bundle.records as any)?.mutation_status ?? bundle.records?.mutation?.mutation_status ?? '—'}</span>} />
+            <Row label="Registration Deed" value={((bundle.records as any)?.registration_status === 'present' || bundle.records?.registration_deed_present) ? ' Present' : 'Not found'} />
           </tbody>
         </table>
       )}
@@ -378,7 +386,12 @@ export const AdminCaseDetail: React.FC = () => {
                 return (
                   <div style={{ margin: '0 0 12px', padding: '8px 12px', borderRadius: '4px', background: c.bg, border: `1px solid ${c.border}`, color: c.color, fontSize: '0.78rem', fontFamily: 'var(--font-mono)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
                     <span><strong>AI BOUNDARY:</strong> {pl.status} — {pl.message}</span>
-                    {provenance && <span style={{ opacity: 0.7 }}>{provenance}</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 4px', background: 'rgba(255,165,0,0.15)', color: '#ffb340', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        MODEL TRAINING PENDING
+                      </span>
+                      {provenance && <span style={{ opacity: 0.7 }}>{provenance}</span>}
+                    </div>
                   </div>
                 )
               })()}

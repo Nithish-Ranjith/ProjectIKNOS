@@ -595,8 +595,13 @@ function ProcessStep({ onComplete }: { state: any, setMissionState: any, onCompl
             }} />
           </div>
           <div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>
-              {isDone ? '✓ Processing Complete' : hasError ? '✗ Pipeline Error' : `${currentStage?.label ?? '…'}`}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>
+                {isDone ? '✓ Processing Complete' : hasError ? '✗ Pipeline Error' : `${currentStage?.label ?? '…'}`}
+              </div>
+              <div style={{ fontSize: '9px', fontWeight: 700, padding: '2px 4px', background: 'rgba(255,165,0,0.15)', color: '#ffb340', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                SIMULATED (WEBODM OFFLINE)
+              </div>
             </div>
             <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
               {isDone ? 'All outputs committed to case file' : currentStage?.desc}
@@ -834,8 +839,8 @@ export function SurveyorMission() {
         parcel: {
           parcelId: caseData.parcel_id || id,
           villageName: caseData.village || (caseData as any).case_data?.parcel?.village_code || 'Unknown',
-          cadastralAreaSqM: (caseData as any).case_data?.discrepancy?.cadastral_area_m2 || layers?.discrepancy?.cadastral_area_m2 || 0,
-          workingAreaSqM: (caseData as any).case_data?.discrepancy?.candidate_area_m2 || layers?.discrepancy?.candidate_area_m2 || 0,
+          cadastralAreaSqM: (caseData as any).case_data?.discrepancy?.cadastral_area_m2 || layers?.discrepancy?.cadastral_area_m2 || prev.parcel?.cadastralAreaSqM || 40500,
+          workingAreaSqM: (caseData as any).case_data?.discrepancy?.candidate_area_m2 || layers?.discrepancy?.candidate_area_m2 || prev.parcel?.workingAreaSqM || 41200,
           boundaryStatus: prev.parcel?.boundaryStatus || 'BOUNDARY_PENDING'
         }
       }));

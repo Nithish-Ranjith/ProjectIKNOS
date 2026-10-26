@@ -1,0 +1,21 @@
+{
+  "encoder": "efficientnet-b3",
+  "input_size": 512,
+  "in_channels": 4,
+  "channel_layout": "RGB (channels 0-2) + centroid Gaussian heatmap (channel 3)",
+  "heatmap_sigma_px": 60,
+  "normalize_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "normalize_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "threshold": 0.5,
+  "output": "single-channel sigmoid mask (1 = inside parcel, 0 = outside); apply cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel) to get the boundary line",
+  "centroid_source_at_inference": "known cadastral centroid of the target parcel, reprojected into this tile's pixel coordinates -- NOT derived from a mask",
+  "best_val_iou": 0.42364083727200824
+}
